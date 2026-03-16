@@ -1,48 +1,42 @@
 version: '3.8'
 
 services:
-  postgres:
+  # 1. The PostgreSQL Database
+  db:
     image: postgres:15-alpine
     container_name: bqm_postgres
+    restart: always
     environment:
       POSTGRES_USER: queue_admin
-      POSTGRES_PASSWORD: queue_password_123
+      POSTGRES_PASSWORD: supersecretpassword
       POSTGRES_DB: badminton_queue
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    restart: unless-stopped
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
-  redis:
-    image: redis:7-alpine
-    container_name: bqm_redis
-    ports:
-      - "6379:6379"
-    restart: unless-stopped
-
+  # 2. The NestJS Backend
   backend:
     build: ./backend
     container_name: bqm_backend
-    environment:
-      - DATABASE_URL=postgresql://queue_admin:queue_password_123@postgres:5432/badminton_queue?schema=public
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+    restart: always
     ports:
       - "3000:3000"
+    environment:
+      # Connects to the 'db' container defined above
+      DATABASE_URL: postgresql://queue_admin:supersecretpassword@db:5432/badminton_queue?schema=public
     depends_on:
-      - postgres
-      - redis
-    restart: unless-stopped
+      - db
 
+  # 3. The React Frontend
   frontend:
     build: ./frontend
     container_name: bqm_frontend
+    restart: always
     ports:
-      - "80:80"
+      - "8080:80" # Maps NAS port 8080 to Nginx port 80
     depends_on:
       - backend
-    restart: unless-stopped
 
 volumes:
-  postgres_data:
+  pgdata: # This ensures your database isn't deleted if the container restarts

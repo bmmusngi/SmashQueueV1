@@ -1,13 +1,19 @@
-FROM node:20-alpine AS builder
-WORKDIR /app
-# We will copy package.json later when we generate the NestJS app
-COPY . .
-# A placeholder for future build commands once NestJS is initialized
-# RUN npm install && npx prisma generate && npm run build
+FROM node:18-alpine
 
-FROM node:20-alpine
 WORKDIR /app
-COPY --from=builder /app ./
+
+# Install dependencies first (for caching)
+COPY package*.json ./
+RUN npm install
+
+# Copy source code and Prisma schema
+COPY . .
+
+# Generate Prisma client and build NestJS
+RUN npx prisma generate
+RUN npm run build
+
 EXPOSE 3000
-# Placeholder start command
-CMD ["echo", "Backend container ready for NestJS initialization..."]
+
+# When the container starts, run database migrations then start the server
+CMD ["sh", "-c", "npx prisma db push && npm run start:prod"]

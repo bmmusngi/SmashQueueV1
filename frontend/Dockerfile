@@ -1,14 +1,14 @@
-FROM node:20-alpine AS builder
+# Stage 1: Build the React app
+FROM node:18-alpine as build
 WORKDIR /app
-# We will copy package.json later when we generate the React app
+COPY package*.json ./
+RUN npm install
 COPY . .
-# A placeholder for future build commands once Vite is initialized
-# RUN npm install && npm run build
+RUN npm run build
 
+# Stage 2: Serve with Nginx
 FROM nginx:alpine
-# Copy custom Nginx configuration for single-page apps
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-# Copy built static files (placeholder path until build is run)
-# COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
+# Expose port 80 for the web server
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
