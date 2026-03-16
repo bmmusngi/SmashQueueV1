@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { io } from 'socket.io-client';
 
 // Change this to your NAS IP later (e.g., http://192.168.1.100:3000)
-const API_URL = 'http://localhost:3000'; 
+const API_URL = 'http://100.88.175.25:3000'; 
 
 const useQueueStore = create((set, get) => ({
   sessionId: null,
