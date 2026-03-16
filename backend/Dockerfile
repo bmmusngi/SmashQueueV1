@@ -2,6 +2,9 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# ---> THE FIX: Install OpenSSL and compatibility libraries for Prisma <---
+RUN apk add --no-cache openssl libc6-compat
+
 # Install dependencies first (for caching)
 COPY package*.json ./
 RUN npm install
