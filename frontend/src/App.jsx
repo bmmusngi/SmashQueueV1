@@ -13,6 +13,8 @@ import AddPlayerModal from './components/AddPlayerModal';
 import DraftMatchModal from './components/DraftMatchModal';
 import PlayerRoster from './components/PlayerRoster';
 import BulkUploadModal from './components/BulkUploadModal';
+import SessionHistory from './components/SessionHistory'; // Import it
+
 
 function App() {
   const [isAddPlayerOpen, setIsAddPlayerOpen] = useState(false);
@@ -64,6 +66,10 @@ function App() {
       />
 
       <main className="flex-1 relative overflow-hidden">
+        
+
+        {currentView === 'HISTORY' && <SessionHistory />}
+
         {currentView === 'LIVE_QUEUE' && (
           <div className="h-full p-4 flex gap-4 overflow-x-auto">
             <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
@@ -104,6 +110,8 @@ function App() {
               </section>
 
             </DndContext>
+            
+            
           </div>
         )}
 
