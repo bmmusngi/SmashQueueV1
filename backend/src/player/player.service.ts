@@ -1,28 +1,59 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class PlayerService {
   constructor(private prisma: PrismaService) {}
 
-  // Save a new player to the database
-  async createPlayer(data: Prisma.PlayerUncheckedCreateInput) {
+  // Create a single session player (Walk-in)
+  async createPlayer(data: any) {
+    return this.prisma.player.create({ data });
+  }
+
+  // Global Roster: Bulk Registration
+  async bulkCreateGlobal(members: any[]) {
+    return this.prisma.$transaction(
+      members.map(m => this.prisma.member.create({ data: m }))
+    );
+  }
+
+  // Session: Bulk Walk-in Add
+  async bulkCreateSession(players: any[], sessionId: string) {
+    return this.prisma.$transaction(
+      players.map(p => this.prisma.player.create({
+        data: { ...p, sessionId }
+      }))
+    );
+  }
+
+  // Invite Member to Session
+  async cloneToSession(memberId: string, sessionId: string) {
+    const member = await this.prisma.member.findUnique({ where: { id: memberId } });
+    if (!member) throw new Error('Member not found');
+    
     return this.prisma.player.create({
-      data,
+      data: {
+        name: member.name,
+        levelWeight: member.levelWeight,
+        gender: member.gender,
+        sessionId: sessionId,
+        memberId: member.id
+      }
     });
   }
 
-  // Get all players for a specific queue session
+  async getGlobalRoster() {
+    return this.prisma.member.findMany({ orderBy: { name: 'asc' } });
+  }
+
   async getPlayersBySession(sessionId: string) {
-    return this.prisma.player.findMany({
+    return this.prisma.player.findMany({ 
       where: { sessionId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'asc' }
     });
   }
 
-  // Update payment status or skill level
-  async updatePlayer(id: string, data: Prisma.PlayerUpdateInput) {
+  async updatePlayer(id: string, data: any) {
     return this.prisma.player.update({
       where: { id },
       data,

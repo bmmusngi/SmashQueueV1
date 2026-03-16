@@ -15,19 +15,38 @@ model Session {
   games     Game[]
 }
 
+model Member {
+  id            String   @id @default(uuid())
+  name          String
+  levelWeight   Int
+  gender        String
+  wins          Int      @default(0)
+  losses        Int      @default(0)
+  ties          Int      @default(0)
+  createdAt     DateTime @default(now())
+  
+  // A member can appear in many sessions as a 'Player'
+  sessionEntries Player[]
+}
+
 model Player {
   id            String   @id @default(uuid())
   sessionId     String
   session       Session  @relation(fields: [sessionId], references: [id])
+  
+  // Link to Member (Nullable because walk-ins aren't members)
+  memberId      String?
+  member        Member?  @relation(fields: [memberId], references: [id])
+
   name          String
   levelWeight   Int
   gender        String
-  status        String   @default("ACTIVE") // ACTIVE, RESTING
-  paymentStatus String   @default("UNPAID") // UNPAID, PAID
+  status        String   @default("ACTIVE")
+  paymentStatus String   @default("UNPAID")
   paymentMode   String?  // GCash, Cash, QRPH
+  
   createdAt     DateTime @default(now())
 
-  // Relations for games (many-to-many)
   gamesAsTeamA  Game[]   @relation("TeamA")
   gamesAsTeamB  Game[]   @relation("TeamB")
 }

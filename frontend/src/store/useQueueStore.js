@@ -16,10 +16,73 @@ const useQueueStore = create((set, get) => ({
     { id: 'c1', number: 1, name: 'Court 1', activeGame: null },
     { id: 'c2', number: 2, name: 'Court 2', activeGame: null },
     { id: 'c3', number: 3, name: 'Court 3', activeGame: null },
-    { id: 'c4', number: 4, name: 'Court 4', activeGame: null },
+    { id: 'c4', number: 4, name: 'Court 24', activeGame: null },
   ],
   currentView: 'LIVE_QUEUE', // Possible values: 'LIVE_QUEUE', 'PLAYER_ROSTER', 'HISTORY', 'REPORTS'
   setView: (view) => set({ currentView: view }),
+  
+  // Logic to add global players to the current session
+  globalPlayers: [],
+  
+  fetchGlobalPlayers: async () => {
+    try {
+      const res = await fetch(`${API_URL}/players/global`);
+      const data = await res.json();
+      set({ globalPlayers: data });
+    } catch (error) {
+      console.error("Failed to fetch global roster:", error);
+    }
+  },
+
+  // Logic to "Invite" a global player to the current session
+  inviteToSession: async (playerId) => {
+    const { sessionId, socket } = get();
+    try {
+      const res = await fetch(`${API_URL}/players/${playerId}/join-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId })
+      });
+      const updatedPlayer = await res.json();
+      
+      // Add them to the live board
+      set((state) => ({ players: [...state.players, updatedPlayer] }));
+      if (socket) socket.emit('updateBoardState', { sessionId, action: 'ADD_PLAYER', payload: updatedPlayer });
+    } catch (error) {
+      console.error("Failed to invite player:", error);
+    }
+  },
+
+  // Bulk upload functionality
+  bulkUpload: async (playersArray, target) => {
+    const { sessionId, socket, API_URL } = get();
+    const endpoint = target === 'GLOBAL' 
+      ? `${API_URL}/players/bulk-global` 
+      : `${API_URL}/players/bulk-session`;
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ players: playersArray, sessionId })
+      });
+
+      if (!res.ok) throw new Error("Bulk upload failed");
+
+      const saved = await res.json();
+
+      if (target === 'GLOBAL') {
+        set((s) => ({ globalPlayers: [...s.globalPlayers, ...saved] }));
+      } else {
+        set((s) => ({ players: [...s.players, ...saved] }));
+        if (socket) socket.emit('updateBoardState', { sessionId, action: 'REFRESH_ALL' });
+      }
+      return true;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  },
 
 
   initSession: async () => {

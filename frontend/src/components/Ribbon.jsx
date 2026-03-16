@@ -40,27 +40,25 @@ export default function Ribbon({ onAddPlayer, onDraftMatch }) {
 
       {/* Tier 2: Contextual Actions */}
       <div className="flex items-center justify-between px-4 py-2 bg-white min-h-[50px]">
-        <div className="flex gap-2">
+         <div className="flex gap-2">
           {currentView === 'LIVE_QUEUE' && (
             <>
+              {/* ... existing buttons ... */}
               <button 
-                onClick={onAddPlayer}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm"
+                onClick={() => onBulkUpload('SESSION')}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded-md text-sm font-bold hover:bg-black transition-colors shadow-sm"
               >
-                <Plus size={16} /> Add Player
-              </button>
-              <button 
-                onClick={onDraftMatch}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-md text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm"
-              >
-                <Swords size={16} /> Draft Match
+                <Upload size={16} /> Bulk Add
               </button>
             </>
           )}
           
           {currentView === 'PLAYER_ROSTER' && (
-            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-md text-sm font-bold hover:bg-indigo-700 transition-colors shadow-sm">
-              <Plus size={16} /> Register New Member
+            <button 
+              onClick={() => onBulkUpload('GLOBAL')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded-md text-sm font-bold hover:bg-black transition-colors shadow-sm"
+            >
+              <Upload size={16} /> Mass Registration
             </button>
           )}
         </div>
