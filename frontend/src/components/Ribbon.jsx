@@ -7,27 +7,28 @@ import {
   Plus, 
   Swords, 
   LogOut, 
-  Upload  // <--- Ensure this is here
+  Upload
 } from 'lucide-react';
 import useQueueStore from '../store/useQueueStore';
+
+// MOVE STATIC DATA OUTSIDE: This prevents unnecessary re-creations during render
+const MODULES = [
+  { id: 'LIVE_QUEUE', label: 'Live Queue', icon: LayoutGrid },
+  { id: 'PLAYER_ROSTER', label: 'Players', icon: Users },
+  { id: 'HISTORY', label: 'History', icon: History },
+  { id: 'REPORTS', label: 'Reports', icon: BarChart3 },
+];
 
 export default function Ribbon({ onAddPlayer, onDraftMatch, onBulkUpload }) {
   const currentView = useQueueStore((state) => state.currentView);
   const setView = useQueueStore((state) => state.setView);
   const resetSession = useQueueStore((state) => state.resetSession);
 
-  const modules = [
-    { id: 'LIVE_QUEUE', label: 'Live Queue', icon: LayoutGrid },
-    { id: 'PLAYER_ROSTER', label: 'Players', icon: Users },
-    { id: 'HISTORY', label: 'History', icon: History },
-    { id: 'REPORTS', label: 'Reports', icon: BarChart3 },
-  ];
-
   return (
     <div className="bg-white border-b border-gray-200 shadow-sm z-20 shrink-0">
       {/* Tier 1: Main Modules */}
       <div className="flex items-center px-4 bg-slate-50 border-b border-gray-100 overflow-x-auto no-scrollbar">
-        {modules.map((mod) => {
+        {MODULES.map((mod) => {
           const Icon = mod.icon;
           const isActive = currentView === mod.id;
           return (
@@ -89,8 +90,6 @@ export default function Ribbon({ onAddPlayer, onDraftMatch, onBulkUpload }) {
         >
           <LogOut size={14} /> End Day
         </button>
-        
-        
       </div>
     </div>
   );
