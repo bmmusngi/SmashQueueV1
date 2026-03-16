@@ -1,132 +1,223 @@
 import { create } from 'zustand';
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = 'http://localhost:3000';
+// Change this to your NAS IP later (e.g., http://192.168.1.100:3000)
+const API_URL = 'http://localhost:3000'; 
 
 const useQueueStore = create((set, get) => ({
   sessionId: null,
   socket: null,
   isConnected: false,
   
-  // --- DUMMY DATA ---
-  players: [
-    { id: 'p1', name: 'Ben', levelWeight: 3, gender: 'M', status: 'ACTIVE', paymentStatus: 'PAID', paymentMode: 'GCash' },
-    { id: 'p2', name: 'Joel', levelWeight: 4, gender: 'M', status: 'ACTIVE', paymentStatus: 'UNPAID' },
-    { id: 'p3', name: 'Axel', levelWeight: 2, gender: 'M', status: 'ACTIVE', paymentStatus: 'PAID', paymentMode: 'Cash' },
-    { id: 'p4', name: 'Henry', levelWeight: 1, gender: 'M', status: 'RESTING', paymentStatus: 'PAID', paymentMode: 'QRPH' },
-    { id: 'p5', name: 'Kagami', levelWeight: 5, gender: 'M', status: 'ACTIVE', paymentStatus: 'PAID', paymentMode: 'Cash' }
-  ],
-  pendingGames: [
-    {
-      id: 'g1', type: 'DOUBLES',
-      teamA: [{ id: 'p6', name: 'Osamu', levelWeight: 2 }, { id: 'p7', name: 'Yuuichi', levelWeight: 5 }],
-      teamB: [{ id: 'p8', name: 'Furihata', levelWeight: 1 }, { id: 'p9', name: 'Taiga', levelWeight: 4 }]
-    }
-  ],
+  // Start with empty arrays (Real data will load from DB)
+  players: [],
+  pendingGames: [],
+  
+  // Courts are usually physical and fixed, so we leave their empty structure here
   courts: [
     { id: 'c1', number: 1, name: 'Court 1', activeGame: null },
-    { id: 'c2', number: 2, name: 'Championship Court', activeGame: {
-      id: 'g2', type: 'SINGLES', startedAt: new Date(Date.now() - 600000).toISOString(), 
-      teamA: [{ id: 'p10', name: 'Coach', levelWeight: 5 }],
-      teamB: [{ id: 'p11', name: 'Challenger', levelWeight: 3 }]
-    }}
+    { id: 'c2', number: 2, name: 'Championship Court', activeGame: null }
   ],
-  // ------------------
 
-  initSession: (sessionId) => {
-    if (get().socket) return;
-    const socket = io(SOCKET_URL);
+  // 1. Initialize App & Fetch Data
+  initSession: async () => {
+    if (get().socket) return; // Prevent double connections
 
-    socket.on('connect', () => {
-      set({ isConnected: true, sessionId, socket });
-      socket.emit('joinSession', { sessionId });
-    });
+    try {
+      // Step A: Get or Create Active Session
+      let sessionRes = await fetch(`${API_URL}/sessions/active`);
+      let sessionText = await sessionRes.text();
+      let session = sessionText ? JSON.parse(sessionText) : null;
 
-    socket.on('disconnect', () => {
-      set({ isConnected: false });
-    });
-
-    socket.on('boardStateUpdated', (data) => {
-      const { action, payload } = data;
-      switch (action) {
-        case 'SYNC_FULL_STATE':
-          set({ players: payload.players, pendingGames: payload.pendingGames, courts: payload.courts });
-          break;
-        case 'ADD_PLAYER':
-          set((state) => ({ players: [...state.players, payload] }));
-          break;
-        case 'DRAFT_GAME':
-          set((state) => ({ pendingGames: [...state.pendingGames, payload] }));
-          break;
-        case 'ASSIGN_GAME':
-          set((state) => ({ pendingGames: payload.pendingGames, courts: payload.courts }));
-          break;
-        default:
-          console.warn('Unknown board action received:', action);
+      if (!session) {
+        const createRes = await fetch(`${API_URL}/sessions`, { method: 'POST' });
+        session = await createRes.json();
       }
-    });
-  },
+      
+      const currentSessionId = session.id;
 
-  addPlayer: (newPlayer) => {
-    const playerWithId = { id: Date.now().toString(), ...newPlayer };
-    set((state) => ({ players: [...state.players, playerWithId] }));
-    
-    const { socket, sessionId } = get();
-    if (socket && sessionId) {
-      socket.emit('updateBoardState', { sessionId, action: 'ADD_PLAYER', payload: playerWithId });
-    }
-  },
+      // Step B: Fetch Players and Games for this session
+      const [playersRes, gamesRes] = await Promise.all([
+        fetch(`${API_URL}/players/session/${currentSessionId}`),
+        fetch(`${API_URL}/games/session/${currentSessionId}`)
+      ]);
 
-  draftGame: (newGame) => {
-    set((state) => ({ pendingGames: [...state.pendingGames, newGame] }));
-    
-    const { socket, sessionId } = get();
-    if (socket && sessionId) {
-      socket.emit('updateBoardState', { sessionId, action: 'DRAFT_GAME', payload: newGame });
-    }
-  },
+      const players = await playersRes.json();
+      const allGames = await gamesRes.json();
 
-  assignGameToCourt: (gameId, courtId) => {
-    set((state) => {
-      // 1. Find the game we are trying to move
-      const gameToMove = state.pendingGames.find(g => g.id === gameId);
-      if (!gameToMove) return state; // Safety check
+      // Step C: Sort games into Pending vs Active
+      const pendingGames = allGames.filter(g => g.status === 'PENDING');
+      const activeGames = allGames.filter(g => g.status === 'ACTIVE');
 
-      // 2. Check if the court already has an active game
-      const targetCourt = state.courts.find(c => c.id === courtId);
-      if (targetCourt && targetCourt.activeGame) {
-        alert("This court is already occupied! Complete the current game first.");
-        return state;
-      }
+      // Populate courts with active games
+      const updatedCourts = get().courts.map(court => {
+        const gameOnThisCourt = activeGames.find(g => g.courtId === court.id);
+        return { ...court, activeGame: gameOnThisCourt || null };
+      });
 
-      // 3. Remove game from pending list
-      const updatedPending = state.pendingGames.filter(g => g.id !== gameId);
+      // Update Local State
+      set({ 
+        sessionId: currentSessionId, 
+        players, 
+        pendingGames, 
+        courts: updatedCourts 
+      });
 
-      // 4. Attach game to the court and stamp the start time for the timer
-      const updatedCourts = state.courts.map(c => {
-        if (c.id === courtId) {
-          return { 
-            ...c, 
-            activeGame: { ...gameToMove, startedAt: new Date().toISOString() } 
-          };
+      // Step D: Connect WebSocket for real-time sync
+      const socket = io(API_URL);
+      socket.on('connect', () => {
+        set({ isConnected: true, socket });
+        socket.emit('joinSession', { sessionId: currentSessionId });
+      });
+
+      socket.on('disconnect', () => set({ isConnected: false }));
+
+      socket.on('boardStateUpdated', (data) => {
+        const { action, payload } = data;
+        switch (action) {
+          case 'ADD_PLAYER':
+            set((state) => ({ players: [...state.players, payload] }));
+            break;
+          case 'DRAFT_GAME':
+            set((state) => ({ pendingGames: [...state.pendingGames, payload] }));
+            break;
+          case 'ASSIGN_GAME':
+            set({ pendingGames: payload.pendingGames, courts: payload.courts });
+            break;
+          default:
+            console.warn('Unknown board action received:', action);
         }
+      });
+
+    } catch (error) {
+      console.error("Failed to initialize session from backend:", error);
+    }
+  },
+
+  // 2. Add Player (Save to DB first)
+  addPlayer: async (newPlayer) => {
+    const { sessionId, socket } = get();
+    if (!sessionId) return;
+
+    try {
+      const response = await fetch(`${API_URL}/players`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newPlayer, sessionId })
+      });
+      const savedPlayer = await response.json();
+
+      // Update UI and Broadcast
+      set((state) => ({ players: [...state.players, savedPlayer] }));
+      if (socket) socket.emit('updateBoardState', { sessionId, action: 'ADD_PLAYER', payload: savedPlayer });
+    } catch (error) {
+      console.error("Failed to save player:", error);
+    }
+  },
+
+  // 3. Draft Game (Save to DB first)
+  draftGame: async (newGameData) => {
+    const { sessionId, socket } = get();
+    if (!sessionId) return;
+
+    try {
+      // Map frontend UI data to Prisma DB schema
+      const dbGameData = {
+        sessionId,
+        type: newGameData.type,
+        status: 'PENDING',
+        // In a real app with many-to-many, this requires mapping player IDs. 
+        // For our MVP array logic, we are storing the JSON structure directly or using relations.
+        teamA: { connect: newGameData.teamA.map(p => ({ id: p.id })) },
+        teamB: { connect: newGameData.teamB.map(p => ({ id: p.id })) }
+      };
+
+      const response = await fetch(`${API_URL}/games`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dbGameData)
+      });
+      const savedGame = await response.json();
+
+      // Ensure the frontend has the full player objects for rendering
+      const gameToRender = { ...savedGame, teamA: newGameData.teamA, teamB: newGameData.teamB };
+
+      set((state) => ({ pendingGames: [...state.pendingGames, gameToRender] }));
+      if (socket) socket.emit('updateBoardState', { sessionId, action: 'DRAFT_GAME', payload: gameToRender });
+    } catch (error) {
+      console.error("Failed to save game:", error);
+    }
+  },
+
+  // 4. Assign to Court (Update DB first)
+  assignGameToCourt: async (gameId, courtId) => {
+    const { sessionId, socket, pendingGames, courts } = get();
+    
+    // Safety check
+    const targetCourt = courts.find(c => c.id === courtId);
+    if (targetCourt && targetCourt.activeGame) return alert("Court is occupied!");
+
+    try {
+      // Tell backend to update the game status
+      await fetch(`${API_URL}/games/${gameId}/assign`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courtId })
+      });
+
+      // Update local state
+      const gameToMove = pendingGames.find(g => g.id === gameId);
+      const updatedPending = pendingGames.filter(g => g.id !== gameId);
+      
+      const updatedCourts = courts.map(c => {
+        if (c.id === courtId) return { ...c, activeGame: { ...gameToMove, startedAt: new Date().toISOString() } };
         return c;
       });
 
       const newState = { pendingGames: updatedPending, courts: updatedCourts };
+      set(newState);
 
-      // 5. Broadcast the change to other tablets
-      const { socket, sessionId } = get();
-      if (socket && sessionId) {
-        socket.emit('updateBoardState', { sessionId, action: 'ASSIGN_GAME', payload: newState });
-      }
-
-      return newState;
-    });
+      if (socket) socket.emit('updateBoardState', { sessionId, action: 'ASSIGN_GAME', payload: newState });
+    } catch (error) {
+      console.error("Failed to assign game:", error);
+    }
   },
 
-  completeGame: (courtId, resultData) => {
-    console.log(`Completing game on court ${courtId} with results:`, resultData);
+    completeGame: async (courtId, gameId, resultData) => {
+    const { sessionId, socket, courts } = get();
+
+    try {
+      // 1. Send the result to the NestJS Backend
+      await fetch(`${API_URL}/games/${gameId}/complete`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resultData)
+      });
+
+      // 2. Clear the active game from the local court state
+      const updatedCourts = courts.map(c => {
+        if (c.id === courtId) return { ...c, activeGame: null };
+        return c;
+      });
+
+      // 3. Update UI
+      set({ courts: updatedCourts });
+
+      // 4. Broadcast the freed-up court to other tablets
+      if (socket) {
+        socket.emit('updateBoardState', { 
+          sessionId, 
+          action: 'COMPLETE_GAME', 
+          payload: { courts: updatedCourts } 
+        });
+      }
+      
+      // Note: A full implementation might also update player status back to 'RESTING' here, 
+      // but for MVP, they can just be drafted into a new game from the Available pool.
+
+    } catch (error) {
+      console.error("Failed to complete game:", error);
+    }
   },
 
   disconnectSocket: () => {
