@@ -27,6 +27,11 @@ services:
       DATABASE_URL: postgresql://queue_admin:supersecretpassword@db:5432/badminton_queue?schema=public
     depends_on:
       - db
+    command: >
+      sh -c "npx prisma generate && 
+             npx prisma db push && 
+             npm run start:dev"
+
 
   # 3. The React Frontend
   frontend:
