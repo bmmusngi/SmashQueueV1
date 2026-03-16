@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 1. GLOBAL ROSTER (Permanent Profiles)
+// GLOBAL ROSTER
 model Member {
   id          String   @id @default(uuid())
   name        String
@@ -18,50 +18,44 @@ model Member {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Relation: One member can be a "Player" in many different sessions
   players     Player[]
 }
 
-// 2. SESSION ATTENDANCE (Today's List)
+// SESSION ATTENDANCE
 model Player {
   id            String   @id @default(uuid())
   name          String
   levelWeight   Int      @default(3)
   gender        String   @default("M")
   
-  // Link to the Session
   sessionId     String
   session       Session  @relation(fields: [sessionId], references: [id])
 
-  // Link to Global Member (Optional for guests)
+  // Optional link to Member (for guests)
   memberId      String?  
   member        Member?  @relation(fields: [memberId], references: [id])
 
-  status        String   @default("ACTIVE") // ACTIVE, WAITING, LEFT
+  status        String   @default("ACTIVE")
   paymentStatus String   @default("UNPAID")
   
-  // Relations to Games (Team A or Team B)
   teamA_games   Game[]   @relation("TeamA")
   teamB_games   Game[]   @relation("TeamB")
 
   createdAt     DateTime @default(now())
 }
 
-
-
-// 4. MATCHES / GAMES
+// MATCHES
 model Game {
   id            String    @id @default(uuid())
   sessionId     String
   session       Session   @relation(fields: [sessionId], references: [id])
   
-  // Link to the physical Court
-  courtId       String?
-  court         Court?    @relation(fields: [courtId], references: [id])
+  // NOTE: Reverted to string courtId to avoid model dependency
+  courtId       String?   
 
-  type          String    @default("DOUBLES") // SINGLES, DOUBLES
-  status        String    @default("PENDING") // PENDING, ACTIVE, COMPLETED
-  winner        String?   // TEAM_A, TEAM_B, DRAW
+  type          String    @default("DOUBLES")
+  status        String    @default("PENDING")
+  winner        String?   
   shuttlesUsed  Int       @default(0)
   
   teamA         Player[]  @relation("TeamA")
@@ -72,11 +66,11 @@ model Game {
   createdAt     DateTime  @default(now())
 }
 
-// 5. QUEUING SESSIONS
+// QUEUING SESSIONS
 model Session {
   id          String    @id @default(uuid())
   date        DateTime  @default(now())
-  status      String    @default("ACTIVE") // ACTIVE, COMPLETED
+  status      String    @default("ACTIVE")
   players     Player[]
   games       Game[]
 }
