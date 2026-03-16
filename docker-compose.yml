@@ -23,14 +23,13 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Connects to the 'db' container defined above
       DATABASE_URL: postgresql://queue_admin:supersecretpassword@db:5432/badminton_queue?schema=public
     depends_on:
       - db
-        command: >
+    command: >
       sh -c "npx prisma generate && 
-             npx prisma db push --accept-data-loss && 
-             npm run start:dev || tail -f /dev/null"
+      npx prisma db push --accept-data-loss && 
+      npm run start:dev"
 
   # 3. The React Frontend
   frontend:
@@ -38,9 +37,9 @@ services:
     container_name: bqm_frontend
     restart: always
     ports:
-      - "8080:80" # Maps NAS port 8080 to Nginx port 80
+      - "8080:80"
     depends_on:
       - backend
 
 volumes:
-  pgdata: # This ensures your database isn't deleted if the container restarts
+  pgdata:
