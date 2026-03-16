@@ -1,30 +1,24 @@
 import { create } from 'zustand';
 import { io } from 'socket.io-client';
 
-// Change this to your NAS IP later (e.g., http://192.168.1.100:3000)
-const API_URL = 'http://100.88.175.25:3000'; 
+// Keep your Tailscale IP here!
+const API_URL = 'http://100.88.175.25:3000'; // <-- Make sure this is your actual IP
 
 const useQueueStore = create((set, get) => ({
   sessionId: null,
   socket: null,
   isConnected: false,
-  
-  // Start with empty arrays (Real data will load from DB)
   players: [],
   pendingGames: [],
-  
-  // Courts are physical and fixed, so we leave their empty structure here
   courts: [
     { id: 'c1', number: 1, name: 'Court 1', activeGame: null },
     { id: 'c2', number: 2, name: 'Championship Court', activeGame: null }
   ],
 
-  // 1. Initialize App & Fetch Data
   initSession: async () => {
-    if (get().socket) return; // Prevent double connections
+    if (get().socket) return; 
 
     try {
-      // Step A: Get or Create Active Session
       let sessionRes = await fetch(`${API_URL}/sessions/active`);
       let sessionText = await sessionRes.text();
       let session = sessionText ? JSON.parse(sessionText) : null;
@@ -36,7 +30,6 @@ const useQueueStore = create((set, get) => ({
       
       const currentSessionId = session.id;
 
-      // Step B: Fetch Players and Games for this session
       const [playersRes, gamesRes] = await Promise.all([
         fetch(`${API_URL}/players/session/${currentSessionId}`),
         fetch(`${API_URL}/games/session/${currentSessionId}`)
@@ -45,17 +38,14 @@ const useQueueStore = create((set, get) => ({
       const players = await playersRes.json();
       const allGames = await gamesRes.json();
 
-      // Step C: Sort games into Pending vs Active
       const pendingGames = allGames.filter(g => g.status === 'PENDING');
       const activeGames = allGames.filter(g => g.status === 'ACTIVE');
 
-      // Populate courts with active games
       const updatedCourts = get().courts.map(court => {
         const gameOnThisCourt = activeGames.find(g => g.courtId === court.id);
         return { ...court, activeGame: gameOnThisCourt || null };
       });
 
-      // Update Local State
       set({ 
         sessionId: currentSessionId, 
         players, 
@@ -63,7 +53,6 @@ const useQueueStore = create((set, get) => ({
         courts: updatedCourts 
       });
 
-      // Step D: Connect WebSocket for real-time sync
       const socket = io(API_URL);
       socket.on('connect', () => {
         set({ isConnected: true, socket });
@@ -87,17 +76,60 @@ const useQueueStore = create((set, get) => ({
           case 'COMPLETE_GAME':
             set({ courts: payload.courts });
             break;
+          case 'RESET_BOARD':
+            window.location.reload(); // Quickest way to sync remote tablets to the fresh session
+            break;
           default:
-            console.warn('Unknown board action received:', action);
+            console.warn('Unknown action:', action);
         }
       });
 
     } catch (error) {
-      console.error("Failed to initialize session from backend:", error);
+      console.error("Failed to initialize session:", error);
     }
   },
 
-  // 2. Add Player (Save to DB first)
+  // --- NEW: End the current queue day and start fresh ---
+  resetSession: async () => {
+    const { sessionId, socket } = get();
+    if (!sessionId) return;
+
+    const confirmReset = window.confirm("Are you sure you want to end this session? This will clear the board and start a new Queue ID.");
+    if (!confirmReset) return;
+
+    try {
+      // 1. Tell backend to mark session as COMPLETED
+      await fetch(`${API_URL}/sessions/${sessionId}/complete`, {
+        method: 'PATCH'
+      });
+
+      // 2. Clear out the local ghost data immediately
+      set({
+        sessionId: null,
+        players: [],
+        pendingGames: [],
+        courts: [
+          { id: 'c1', number: 1, name: 'Court 1', activeGame: null },
+          { id: 'c2', number: 2, name: 'Championship Court', activeGame: null }
+        ]
+      });
+
+      // 3. Disconnect old socket
+      if (socket) {
+        socket.emit('updateBoardState', { sessionId, action: 'RESET_BOARD', payload: {} });
+        socket.disconnect();
+        set({ socket: null, isConnected: false });
+      }
+
+      // 4. Fire up a brand new session!
+      await get().initSession();
+
+    } catch (error) {
+      console.error("Failed to reset session:", error);
+      alert("Error ending session. Check backend connection.");
+    }
+  },
+
   addPlayer: async (newPlayer) => {
     const { sessionId, socket } = get();
     if (!sessionId) return;
@@ -110,7 +142,6 @@ const useQueueStore = create((set, get) => ({
       });
       const savedPlayer = await response.json();
 
-      // Update UI and Broadcast
       set((state) => ({ players: [...state.players, savedPlayer] }));
       if (socket) socket.emit('updateBoardState', { sessionId, action: 'ADD_PLAYER', payload: savedPlayer });
     } catch (error) {
@@ -118,13 +149,11 @@ const useQueueStore = create((set, get) => ({
     }
   },
 
-  // 3. Draft Game (Save to DB first)
   draftGame: async (newGameData) => {
     const { sessionId, socket } = get();
     if (!sessionId) return;
 
     try {
-      // FIX: Use Prisma's strict relation formatting for ALL linked tables
       const dbGameData = {
         session: { connect: { id: sessionId } },
         type: newGameData.type,
@@ -139,7 +168,6 @@ const useQueueStore = create((set, get) => ({
         body: JSON.stringify(dbGameData)
       });
 
-      // Catch the error so we don't render a blank card!
       if (!response.ok) {
         console.error("Backend error:", await response.text());
         alert("Failed to save game to database!");
@@ -147,8 +175,6 @@ const useQueueStore = create((set, get) => ({
       }
 
       const savedGame = await response.json();
-
-      // Update UI with the game directly from the database
       set((state) => ({ pendingGames: [...state.pendingGames, savedGame] }));
       if (socket) socket.emit('updateBoardState', { sessionId, action: 'DRAFT_GAME', payload: savedGame });
     } catch (error) {
@@ -156,23 +182,19 @@ const useQueueStore = create((set, get) => ({
     }
   },
 
-  // 4. Assign to Court (Update DB first)
   assignGameToCourt: async (gameId, courtId) => {
     const { sessionId, socket, pendingGames, courts } = get();
     
-    // Safety check
     const targetCourt = courts.find(c => c.id === courtId);
     if (targetCourt && targetCourt.activeGame) return alert("Court is occupied!");
 
     try {
-      // Tell backend to update the game status
       await fetch(`${API_URL}/games/${gameId}/assign`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ courtId })
       });
 
-      // Update local state
       const gameToMove = pendingGames.find(g => g.id === gameId);
       const updatedPending = pendingGames.filter(g => g.id !== gameId);
       
@@ -190,28 +212,23 @@ const useQueueStore = create((set, get) => ({
     }
   },
 
-  // 5. Complete Game (Clear court and log shuttles)
   completeGame: async (courtId, gameId, resultData) => {
     const { sessionId, socket, courts } = get();
 
     try {
-      // 1. Send the result to the NestJS Backend
       await fetch(`${API_URL}/games/${gameId}/complete`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(resultData)
       });
 
-      // 2. Clear the active game from the local court state
       const updatedCourts = courts.map(c => {
         if (c.id === courtId) return { ...c, activeGame: null };
         return c;
       });
 
-      // 3. Update UI
       set({ courts: updatedCourts });
 
-      // 4. Broadcast the freed-up court to other tablets
       if (socket) {
         socket.emit('updateBoardState', { 
           sessionId, 
@@ -219,13 +236,11 @@ const useQueueStore = create((set, get) => ({
           payload: { courts: updatedCourts } 
         });
       }
-      
     } catch (error) {
       console.error("Failed to complete game:", error);
     }
   },
 
-  // Cleanup
   disconnectSocket: () => {
     const { socket } = get();
     if (socket) {

@@ -8,9 +8,8 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { Users, LayoutGrid, Activity } from 'lucide-react';
+import { Users, LayoutGrid, Activity, AlertOctagon } from 'lucide-react';
 
-// Store & Components
 import useQueueStore from './store/useQueueStore';
 import KanbanColumn from './components/KanbanColumn';
 import ActiveCourtCard from './components/ActiveCourtCard';
@@ -21,19 +20,19 @@ function App() {
   const [isAddPlayerOpen, setIsAddPlayerOpen] = useState(false);
   const [isDraftMatchOpen, setIsDraftMatchOpen] = useState(false);
 
-  // Pull state and actions from store
   const players = useQueueStore((state) => state.players);
   const pendingGames = useQueueStore((state) => state.pendingGames);
   const courts = useQueueStore((state) => state.courts);
   const sessionId = useQueueStore((state) => state.sessionId);
   const assignGameToCourt = useQueueStore((state) => state.assignGameToCourt);
   const initSession = useQueueStore((state) => state.initSession);
+  
+  // Bring in our new reset function
+  const resetSession = useQueueStore((state) => state.resetSession);
 
-  // --- NEW: Trigger the DB fetch on app load ---
   useEffect(() => {
     initSession();
   }, [initSession]);
-  // ---------------------------------------------
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -60,8 +59,7 @@ function App() {
       <header className="bg-indigo-900 text-white p-4 flex justify-between items-center shadow-md shrink-0 z-10">
         <div>
           <h1 className="text-xl font-bold">🏸 Badminton Queue Manager</h1>
-          {/* Display Loading if DB hasn't returned the Session ID yet */}
-          <p className="text-sm text-indigo-200">
+          <p className="text-sm text-indigo-200 font-mono">
             Session ID: {sessionId ? sessionId : 'Loading...'}
           </p>
         </div>
@@ -72,8 +70,14 @@ function App() {
           >
             Draft Match
           </button>
-          <button className="bg-indigo-700 hover:bg-indigo-600 px-4 py-2 rounded font-medium transition-colors hidden md:block">
-            Queue Settings
+          
+          {/* THE NEW RESET BUTTON */}
+          <button 
+            onClick={resetSession}
+            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-medium transition-colors hidden md:flex items-center gap-2"
+          >
+            <AlertOctagon size={18} />
+            End Session
           </button>
         </div>
       </header>
