@@ -1,89 +1,23 @@
 import { create } from 'zustand';
 import { io } from 'socket.io-client';
 
-// Keep your Tailscale IP!
+// UPDATE THIS TO YOUR TAILSCALE IP
 const API_URL = 'http://100.88.175.25:3000'; 
-
-
 
 const useQueueStore = create((set, get) => ({
   sessionId: null,
   socket: null,
   isConnected: false,
+  currentView: 'LIVE_QUEUE',
   players: [],
+  globalPlayers: [],
   pendingGames: [],
   courts: [
     { id: 'c1', number: 1, name: 'Court 1', activeGame: null },
-    { id: 'c2', number: 2, name: 'Court 2', activeGame: null },
-    { id: 'c3', number: 3, name: 'Court 3', activeGame: null },
-    { id: 'c4', number: 4, name: 'Court 24', activeGame: null },
+    { id: 'c2', number: 2, name: 'Championship Court', activeGame: null }
   ],
-  currentView: 'LIVE_QUEUE', // Possible values: 'LIVE_QUEUE', 'PLAYER_ROSTER', 'HISTORY', 'REPORTS'
+
   setView: (view) => set({ currentView: view }),
-  
-  // Logic to add global players to the current session
-  globalPlayers: [],
-  
-  fetchGlobalPlayers: async () => {
-    try {
-      const res = await fetch(`${API_URL}/players/global`);
-      const data = await res.json();
-      set({ globalPlayers: data });
-    } catch (error) {
-      console.error("Failed to fetch global roster:", error);
-    }
-  },
-
-  // Logic to "Invite" a global player to the current session
-  inviteToSession: async (playerId) => {
-    const { sessionId, socket } = get();
-    try {
-      const res = await fetch(`${API_URL}/players/${playerId}/join-session`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId })
-      });
-      const updatedPlayer = await res.json();
-      
-      // Add them to the live board
-      set((state) => ({ players: [...state.players, updatedPlayer] }));
-      if (socket) socket.emit('updateBoardState', { sessionId, action: 'ADD_PLAYER', payload: updatedPlayer });
-    } catch (error) {
-      console.error("Failed to invite player:", error);
-    }
-  },
-
-  // Bulk upload functionality
-  bulkUpload: async (playersArray, target) => {
-    const { sessionId, socket, API_URL } = get();
-    const endpoint = target === 'GLOBAL' 
-      ? `${API_URL}/players/bulk-global` 
-      : `${API_URL}/players/bulk-session`;
-
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ players: playersArray, sessionId })
-      });
-
-      if (!res.ok) throw new Error("Bulk upload failed");
-
-      const saved = await res.json();
-
-      if (target === 'GLOBAL') {
-        set((s) => ({ globalPlayers: [...s.globalPlayers, ...saved] }));
-      } else {
-        set((s) => ({ players: [...s.players, ...saved] }));
-        if (socket) socket.emit('updateBoardState', { sessionId, action: 'REFRESH_ALL' });
-      }
-      return true;
-    } catch (e) {
-      console.error(e);
-      return false;
-    }
-  },
-
 
   initSession: async () => {
     if (get().socket) return; 
@@ -96,67 +30,98 @@ const useQueueStore = create((set, get) => ({
         session = await createRes.json();
       }
       const currentSessionId = session.id;
+
       const [playersRes, gamesRes] = await Promise.all([
         fetch(`${API_URL}/players/session/${currentSessionId}`),
         fetch(`${API_URL}/games/session/${currentSessionId}`)
       ]);
+
       const players = await playersRes.json();
       const allGames = await gamesRes.json();
       const pendingGames = allGames.filter(g => g.status === 'PENDING');
       const activeGames = allGames.filter(g => g.status === 'ACTIVE');
+
       const updatedCourts = get().courts.map(court => {
         const gameOnThisCourt = activeGames.find(g => g.courtId === court.id);
         return { ...court, activeGame: gameOnThisCourt || null };
       });
+
       set({ sessionId: currentSessionId, players, pendingGames, courts: updatedCourts });
+
       const socket = io(API_URL);
       socket.on('connect', () => {
         set({ isConnected: true, socket });
         socket.emit('joinSession', { sessionId: currentSessionId });
       });
-      socket.on('disconnect', () => set({ isConnected: false }));
+
       socket.on('boardStateUpdated', (data) => {
-        const { action, payload } = data;
-        switch (action) {
-          case 'ADD_PLAYER': set((state) => ({ players: [...state.players, payload] })); break;
-          case 'DRAFT_GAME': set((state) => ({ pendingGames: [...state.pendingGames, payload] })); break;
-          case 'ASSIGN_GAME': set({ pendingGames: payload.pendingGames, courts: payload.courts }); break;
-          case 'COMPLETE_GAME': set({ courts: payload.courts }); break;
-          case 'RESET_BOARD': window.location.reload(); break;
+        const { action } = data;
+        if (action === 'REFRESH_ALL' || action === 'RESET_BOARD') {
+           window.location.reload();
+        } else {
+           // We'll let the standard refresh handle most things for now to stay synced
+           get().initSession(); 
         }
       });
     } catch (error) { console.error("Init error:", error); }
   },
 
-  resetSession: async () => {
-    const { sessionId, socket } = get();
-    if (!sessionId || !window.confirm("End session and start fresh?")) return;
+  fetchGlobalPlayers: async () => {
     try {
-      await fetch(`${API_URL}/sessions/${sessionId}/complete`, { method: 'PATCH' });
-      set({ sessionId: null, players: [], pendingGames: [] });
-      if (socket) {
-        socket.emit('updateBoardState', { sessionId, action: 'RESET_BOARD', payload: {} });
-        socket.disconnect();
-        set({ socket: null });
+      const res = await fetch(`${API_URL}/players/global`);
+      const data = await res.json();
+      set({ globalPlayers: data });
+    } catch (e) { console.error(e); }
+  },
+
+  inviteToSession: async (memberId) => {
+    const { sessionId } = get();
+    await fetch(`${API_URL}/players/${memberId}/join-session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId })
+    });
+    window.location.reload(); // Simple sync
+  },
+
+  bulkUpload: async (playersArray, target) => {
+    const { sessionId } = get();
+    const endpoint = target === 'GLOBAL' 
+      ? `${API_URL}/players/bulk-global` 
+      : `${API_URL}/players/bulk-session`;
+
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ players: playersArray, sessionId })
+      });
+      if (res.ok) {
+        window.location.reload();
+        return true;
       }
-      await get().initSession();
-    } catch (error) { console.error("Reset error:", error); }
+    } catch (e) { console.error(e); return false; }
+  },
+
+  resetSession: async () => {
+    const { sessionId } = get();
+    if (!sessionId || !window.confirm("End session?")) return;
+    await fetch(`${API_URL}/sessions/${sessionId}/complete`, { method: 'PATCH' });
+    window.location.reload();
   },
 
   addPlayer: async (p) => {
-    const { sessionId, socket } = get();
-    const res = await fetch(`${API_URL}/players`, {
+    const { sessionId } = get();
+    await fetch(`${API_URL}/players`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...p, sessionId })
     });
-    const saved = await res.json();
-    set((s) => ({ players: [...s.players, saved] }));
-    if (socket) socket.emit('updateBoardState', { sessionId, action: 'ADD_PLAYER', payload: saved });
+    window.location.reload();
   },
 
   draftGame: async (data) => {
-    const { sessionId, socket } = get();
+    const { sessionId } = get();
     const dbData = {
       session: { connect: { id: sessionId } },
       type: data.type,
@@ -164,44 +129,30 @@ const useQueueStore = create((set, get) => ({
       teamA: { connect: data.teamA.map(p => ({ id: p.id })) },
       teamB: { connect: data.teamB.map(p => ({ id: p.id })) }
     };
-    const res = await fetch(`${API_URL}/games`, {
+    await fetch(`${API_URL}/games`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(dbData)
     });
-    const saved = await res.json();
-    set((s) => ({ pendingGames: [...s.pendingGames, saved] }));
-    if (socket) socket.emit('updateBoardState', { sessionId, action: 'DRAFT_GAME', payload: saved });
+    window.location.reload();
   },
 
   assignGameToCourt: async (gameId, courtId) => {
-    const { sessionId, socket, pendingGames, courts } = get();
     await fetch(`${API_URL}/games/${gameId}/assign`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ courtId })
     });
-    const game = pendingGames.find(g => g.id === gameId);
-    const updatedPending = pendingGames.filter(g => g.id !== gameId);
-    const updatedCourts = courts.map(c => c.id === courtId ? { ...c, activeGame: { ...game, startedAt: new Date().toISOString() } } : c);
-    const newState = { pendingGames: updatedPending, courts: updatedCourts };
-    set(newState);
-    if (socket) socket.emit('updateBoardState', { sessionId, action: 'ASSIGN_GAME', payload: newState });
+    window.location.reload();
   },
 
-  // FINALIZED: Complete Game logic
   completeGame: async (courtId, gameId, resultData) => {
-    const { sessionId, socket, courts } = get();
-    try {
-      await fetch(`${API_URL}/games/${gameId}/complete`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(resultData)
-      });
-      const updatedCourts = courts.map(c => c.id === courtId ? { ...c, activeGame: null } : c);
-      set({ courts: updatedCourts });
-      if (socket) socket.emit('updateBoardState', { sessionId, action: 'COMPLETE_GAME', payload: { courts: updatedCourts } });
-    } catch (error) { console.error("Complete error:", error); }
+    await fetch(`${API_URL}/games/${gameId}/complete`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(resultData)
+    });
+    window.location.reload();
   }
 }));
 
