@@ -47,18 +47,7 @@ model Player {
   createdAt     DateTime @default(now())
 }
 
-// 3. PHYSICAL COURTS
-model Court {
-  id          String   @id @default(uuid())
-  name        String   // e.g., "Court 1"
-  number      Int      @unique
-  status      String   @default("OPEN") // OPEN, CLOSED, MAINTENANCE
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Games currently or previously played on this court
-  games       Game[]
-}
+
 
 // 4. MATCHES / GAMES
 model Game {
