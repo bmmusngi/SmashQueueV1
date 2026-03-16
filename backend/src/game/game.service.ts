@@ -7,20 +7,18 @@ export class GameService {
   constructor(private prisma: PrismaService) {}
 
   // Draft a new match (Pending Game)
-  async createGame(data: Prisma.GameUncheckedCreateInput) {
+  async createGame(data: Prisma.GameCreateInput) { // Changed to GameCreateInput
     return this.prisma.game.create({
       data,
+      include: { teamA: true, teamB: true } // FIX: Return the player objects to frontend!
     });
   }
 
-  // Fetch all games for a specific session (useful for initial page load)
+  // Fetch all games for a specific session
   async getGamesBySession(sessionId: string) {
     return this.prisma.game.findMany({
       where: { sessionId },
-      include: {
-        teamA: true, // Pulls in the actual player details, not just IDs
-        teamB: true,
-      },
+      include: { teamA: true, teamB: true },
       orderBy: { createdAt: 'asc' },
     });
   }
@@ -34,10 +32,11 @@ export class GameService {
         courtId: courtId,
         startedAt: new Date(),
       },
+      include: { teamA: true, teamB: true } // Keep full data intact
     });
   }
 
-  // Finish the game and log the shuttle usage
+  // Finish the game
   async completeGame(gameId: string, shuttlesUsed: number, winner?: string) {
     return this.prisma.game.update({
       where: { id: gameId },

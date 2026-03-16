@@ -8,9 +8,9 @@ export class GameController {
 
   // POST http://localhost:3000/games
   @Post()
-  create(@Body() createGameDto: Prisma.GameUncheckedCreateInput) {
-    return this.gameService.createGame(createGameDto);
-  }
+create(@Body() createGameDto: Prisma.GameCreateInput) { // Changed to GameCreateInput
+  return this.gameService.createGame(createGameDto);
+}
 
   // GET http://localhost:3000/games/session/:sessionId
   @Get('session/:sessionId')

@@ -124,9 +124,9 @@ const useQueueStore = create((set, get) => ({
     if (!sessionId) return;
 
     try {
-      // Map frontend UI data to Prisma DB schema
+      // FIX: Use Prisma's strict relation formatting for ALL linked tables
       const dbGameData = {
-        sessionId,
+        session: { connect: { id: sessionId } },
         type: newGameData.type,
         status: 'PENDING',
         teamA: { connect: newGameData.teamA.map(p => ({ id: p.id })) },
@@ -138,15 +138,21 @@ const useQueueStore = create((set, get) => ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dbGameData)
       });
+
+      // Catch the error so we don't render a blank card!
+      if (!response.ok) {
+        console.error("Backend error:", await response.text());
+        alert("Failed to save game to database!");
+        return; 
+      }
+
       const savedGame = await response.json();
 
-      // Ensure the frontend has the full player objects for rendering
-      const gameToRender = { ...savedGame, teamA: newGameData.teamA, teamB: newGameData.teamB };
-
-      set((state) => ({ pendingGames: [...state.pendingGames, gameToRender] }));
-      if (socket) socket.emit('updateBoardState', { sessionId, action: 'DRAFT_GAME', payload: gameToRender });
+      // Update UI with the game directly from the database
+      set((state) => ({ pendingGames: [...state.pendingGames, savedGame] }));
+      if (socket) socket.emit('updateBoardState', { sessionId, action: 'DRAFT_GAME', payload: savedGame });
     } catch (error) {
-      console.error("Failed to save game:", error);
+      console.error("Network failed to save game:", error);
     }
   },
 
