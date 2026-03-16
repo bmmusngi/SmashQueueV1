@@ -13,7 +13,7 @@ const useQueueStore = create((set, get) => ({
   players: [],
   pendingGames: [],
   
-  // Courts are usually physical and fixed, so we leave their empty structure here
+  // Courts are physical and fixed, so we leave their empty structure here
   courts: [
     { id: 'c1', number: 1, name: 'Court 1', activeGame: null },
     { id: 'c2', number: 2, name: 'Championship Court', activeGame: null }
@@ -84,6 +84,9 @@ const useQueueStore = create((set, get) => ({
           case 'ASSIGN_GAME':
             set({ pendingGames: payload.pendingGames, courts: payload.courts });
             break;
+          case 'COMPLETE_GAME':
+            set({ courts: payload.courts });
+            break;
           default:
             console.warn('Unknown board action received:', action);
         }
@@ -126,8 +129,6 @@ const useQueueStore = create((set, get) => ({
         sessionId,
         type: newGameData.type,
         status: 'PENDING',
-        // In a real app with many-to-many, this requires mapping player IDs. 
-        // For our MVP array logic, we are storing the JSON structure directly or using relations.
         teamA: { connect: newGameData.teamA.map(p => ({ id: p.id })) },
         teamB: { connect: newGameData.teamB.map(p => ({ id: p.id })) }
       };
@@ -183,7 +184,8 @@ const useQueueStore = create((set, get) => ({
     }
   },
 
-    completeGame: async (courtId, gameId, resultData) => {
+  // 5. Complete Game (Clear court and log shuttles)
+  completeGame: async (courtId, gameId, resultData) => {
     const { sessionId, socket, courts } = get();
 
     try {
@@ -212,14 +214,12 @@ const useQueueStore = create((set, get) => ({
         });
       }
       
-      // Note: A full implementation might also update player status back to 'RESTING' here, 
-      // but for MVP, they can just be drafted into a new game from the Available pool.
-
     } catch (error) {
       console.error("Failed to complete game:", error);
     }
   },
 
+  // Cleanup
   disconnectSocket: () => {
     const { socket } = get();
     if (socket) {
