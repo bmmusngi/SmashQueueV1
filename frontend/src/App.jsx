@@ -27,6 +27,7 @@ function App() {
   const pendingGames = useQueueStore((state) => state.pendingGames);
   const courts = useQueueStore((state) => state.courts);
   const sessionId = useQueueStore((state) => state.sessionId);
+  const assignGameToCourt = useQueueStore((state) => state.assignGameToCourt);
 
   // 3. Configure Sensors (Crucial for Tablet/Touch support)
   const sensors = useSensors(
@@ -43,8 +44,23 @@ function App() {
   // 4. Handle the drop event
   const handleDragEnd = (event) => {
     const { active, over } = event;
+    
+    // If dropped outside a valid drop zone, snap it back
     if (!over) return;
-    console.log(`Queue Master dropped item ${active.id} over zone ${over.id}`);
+
+    // Retrieve the custom data we attached to our draggable components
+    const activeType = active.data.current?.type;
+    const overType = over.data.current?.type;
+
+    // SCENARIO: Dragging a Pending Game onto an Active Court
+    if (activeType === 'PendingGame' && overType === 'Court') {
+      const gameId = active.id;
+      const courtId = over.data.current.court.id;
+      
+      assignGameToCourt(gameId, courtId);
+    }
+    
+    // Future Scenario: Reordering lists, dragging players back to the pool, etc.
   };
 
   // 5. Themes

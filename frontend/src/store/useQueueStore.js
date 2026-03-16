@@ -58,6 +58,9 @@ const useQueueStore = create((set, get) => ({
         case 'DRAFT_GAME':
           set((state) => ({ pendingGames: [...state.pendingGames, payload] }));
           break;
+        case 'ASSIGN_GAME':
+          set((state) => ({ pendingGames: payload.pendingGames, courts: payload.courts }));
+          break;
         default:
           console.warn('Unknown board action received:', action);
       }
@@ -83,12 +86,43 @@ const useQueueStore = create((set, get) => ({
     }
   },
 
-  movePlayerToGame: (playerId, gameId) => {
-    console.log(`Moving player ${playerId} to game ${gameId}`);
-  },
-
   assignGameToCourt: (gameId, courtId) => {
-    console.log(`Assigning game ${gameId} to court ${courtId}`);
+    set((state) => {
+      // 1. Find the game we are trying to move
+      const gameToMove = state.pendingGames.find(g => g.id === gameId);
+      if (!gameToMove) return state; // Safety check
+
+      // 2. Check if the court already has an active game
+      const targetCourt = state.courts.find(c => c.id === courtId);
+      if (targetCourt && targetCourt.activeGame) {
+        alert("This court is already occupied! Complete the current game first.");
+        return state;
+      }
+
+      // 3. Remove game from pending list
+      const updatedPending = state.pendingGames.filter(g => g.id !== gameId);
+
+      // 4. Attach game to the court and stamp the start time for the timer
+      const updatedCourts = state.courts.map(c => {
+        if (c.id === courtId) {
+          return { 
+            ...c, 
+            activeGame: { ...gameToMove, startedAt: new Date().toISOString() } 
+          };
+        }
+        return c;
+      });
+
+      const newState = { pendingGames: updatedPending, courts: updatedCourts };
+
+      // 5. Broadcast the change to other tablets
+      const { socket, sessionId } = get();
+      if (socket && sessionId) {
+        socket.emit('updateBoardState', { sessionId, action: 'ASSIGN_GAME', payload: newState });
+      }
+
+      return newState;
+    });
   },
 
   completeGame: (courtId, resultData) => {
