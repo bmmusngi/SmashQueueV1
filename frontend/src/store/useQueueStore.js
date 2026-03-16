@@ -12,43 +12,10 @@ const useQueueStore = create((set, get) => ({
   players: [],
   globalPlayers: [],
   pendingGames: [],
-    // Change courts from hardcoded to empty array initially
-  courts: [],
-
-  fetchCourts: async () => {
-    const { API_URL } = get();
-    const res = await fetch(`${API_URL}/courts`);
-    const data = await res.json();
-    set({ courts: data });
-  },
-
-  addCourt: async (name) => {
-    const { API_URL, courts } = get();
-    const res = await fetch(`${API_URL}/courts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, number: courts.length + 1 })
-    });
-    if (res.ok) get().fetchCourts();
-  },
-
-  renameCourt: async (id, name) => {
-    const { API_URL } = get();
-    await fetch(`${API_URL}/courts/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name })
-    });
-    get().fetchCourts();
-  },
-
-  removeCourt: async (id) => {
-    const { API_URL } = get();
-    if (!window.confirm("Remove this court?")) return;
-    await fetch(`${API_URL}/courts/${id}`, { method: 'DELETE' });
-    get().fetchCourts();
-  },
-
+  courts: [
+    { id: 'c1', number: 1, name: 'Court 1', activeGame: null },
+    { id: 'c2', number: 2, name: 'Championship Court', activeGame: null }
+  ],
   
   updateMember: async (memberId, updatedData) => {
     try {
