@@ -82,12 +82,6 @@ export default function Ribbon({ onAddPlayer, onDraftMatch, onBulkUpload }) {
             </button>
           )}
         </div>
-        <button 
-          onClick={onManageCourts}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase hover:bg-slate-200 transition-all"
-        >
-          <Activity size={14} /> Courts
-        </button>
 
         <button 
           onClick={resetSession}
