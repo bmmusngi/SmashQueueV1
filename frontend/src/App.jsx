@@ -13,16 +13,13 @@ import AddPlayerModal from './components/AddPlayerModal';
 import DraftMatchModal from './components/DraftMatchModal';
 import PlayerRoster from './components/PlayerRoster';
 import BulkUploadModal from './components/BulkUploadModal';
-import SessionHistory from './components/SessionHistory'; // Import it
-
+// import SessionHistory from './components/SessionHistory'; // REMOVE/COMMENT IF FILE DOES NOT EXIST
 
 function App() {
   const [isAddPlayerOpen, setIsAddPlayerOpen] = useState(false);
   const [isDraftMatchOpen, setIsDraftMatchOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [bulkTarget, setBulkTarget] = useState('SESSION');
-  
-  // NEW: State for the match currently being edited
   const [editingGame, setEditingGame] = useState(null);
 
   const { 
@@ -44,11 +41,6 @@ function App() {
     }
   };
 
-  const triggerBulkUpload = (target) => {
-    setBulkTarget(target);
-    setIsBulkOpen(true);
-  };
-
   return (
     <div className="h-screen w-full flex flex-col bg-slate-100 font-sans overflow-hidden">
       <header className="bg-indigo-900 text-white px-4 py-3 flex justify-between items-center shadow-md shrink-0 z-30">
@@ -62,42 +54,27 @@ function App() {
       <Ribbon 
         onAddPlayer={() => setIsAddPlayerOpen(true)} 
         onDraftMatch={() => setIsDraftMatchOpen(true)}
-        onBulkUpload={triggerBulkUpload}
+        onBulkUpload={(target) => { setBulkTarget(target); setIsBulkOpen(true); }}
       />
 
       <main className="flex-1 relative overflow-hidden">
-        
-
-        {currentView === 'HISTORY' && <SessionHistory />}
-
+        {/* VIEW SWITCHER */}
         {currentView === 'LIVE_QUEUE' && (
           <div className="h-full p-4 flex gap-4 overflow-x-auto">
             <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
-              
-              {/* Available Players Column */}
               <div className="min-w-[300px] w-1/4 h-full">
                 <KanbanColumn 
-                  id="col-available" 
-                  title="Available" 
-                  icon={Users} 
-                  items={players} 
+                  id="col-available" title="Available" icon={Users} items={players} 
                   colorTheme={{ bg: 'bg-gray-200', headerBg: 'bg-gray-300', headerText: 'text-gray-700' }} 
                 />
               </div>
-
-              {/* Pending Matches Column (With Edit Callback) */}
               <div className="min-w-[350px] w-1/3 h-full">
                 <KanbanColumn 
-                  id="col-pending" 
-                  title="Pending Matches" 
-                  icon={LayoutGrid} 
-                  items={pendingGames} 
+                  id="col-pending" title="Pending Matches" icon={LayoutGrid} items={pendingGames} 
                   onEditMatch={(game) => setEditingGame(game)}
                   colorTheme={{ bg: 'bg-slate-200', headerBg: 'bg-slate-300', headerText: 'text-slate-700' }} 
                 />
               </div>
-
-              {/* Active Courts Section */}
               <section className="bg-emerald-100 rounded-lg flex flex-col min-w-[400px] flex-1 shadow-inner border border-emerald-200 overflow-hidden">
                 <div className="p-3 bg-emerald-200 font-bold text-emerald-800 flex items-center gap-2 shrink-0 border-b border-emerald-300/50">
                   <Activity size={20} /> Active Courts
@@ -108,32 +85,27 @@ function App() {
                   ))}
                 </div>
               </section>
-
             </DndContext>
-            
-            
           </div>
         )}
 
         {currentView === 'PLAYER_ROSTER' && <PlayerRoster />}
 
+        {/* Fallback for views not yet implemented or in progress */}
         {(currentView === 'HISTORY' || currentView === 'REPORTS') && (
-          <div className="h-full flex items-center justify-center bg-white italic text-gray-400">
-            Module {currentView} Coming Soon
+          <div className="h-full flex items-center justify-center bg-white italic text-gray-400 font-black uppercase text-xs tracking-widest">
+            Module {currentView} coming soon...
           </div>
         )}
       </main>
 
-      {/* Modals */}
+      {/* MODALS */}
       <AddPlayerModal isOpen={isAddPlayerOpen} onClose={() => setIsAddPlayerOpen(false)} />
-      
-      {/* Draft Match Modal handles both Create and Edit modes */}
       <DraftMatchModal 
         isOpen={isDraftMatchOpen || !!editingGame} 
         onClose={() => { setIsDraftMatchOpen(false); setEditingGame(null); }} 
         initialData={editingGame}
       />
-      
       <BulkUploadModal isOpen={isBulkOpen} onClose={() => setIsBulkOpen(false)} target={bulkTarget} />
     </div>
   );
