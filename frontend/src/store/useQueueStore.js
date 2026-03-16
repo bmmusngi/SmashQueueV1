@@ -188,7 +188,30 @@ const useQueueStore = create((set, get) => ({
       body: JSON.stringify(resultData)
     });
     window.location.reload();
+  },
+  
+  updateGame: async (gameId, updatedData) => {
+    const { sessionId } = get();
+    try {
+      const dbData = {
+        type: updatedData.type,
+        teamA: { set: updatedData.teamA.map(p => ({ id: p.id })) },
+        teamB: { set: updatedData.teamB.map(p => ({ id: p.id })) }
+      };
+
+      await fetch(`${API_URL}/games/${gameId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dbData)
+      });
+      
+      window.location.reload(); // Keep it simple and synced
+    } catch (e) {
+      console.error("Update game error:", e);
+    }
   }
+
+  
 }));
 
 export default useQueueStore;

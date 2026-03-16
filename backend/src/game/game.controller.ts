@@ -35,4 +35,14 @@ create(@Body() createGameDto: Prisma.GameCreateInput) { // Changed to GameCreate
   ) {
     return this.gameService.completeGame(id, completeData.shuttlesUsed, completeData.winner);
   }
+  
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateData: any) {
+    return this.prisma.game.update({
+      where: { id },
+      data: updateData,
+      include: { teamA: true, teamB: true }
+    });
+  }
+
 }

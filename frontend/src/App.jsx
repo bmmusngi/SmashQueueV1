@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { DndContext, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { 
+  DndContext, closestCorners, KeyboardSensor, PointerSensor, useSensor, useSensors 
+} from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { Users, LayoutGrid, Activity } from 'lucide-react';
 
@@ -17,8 +19,14 @@ function App() {
   const [isDraftMatchOpen, setIsDraftMatchOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [bulkTarget, setBulkTarget] = useState('SESSION');
+  
+  // NEW: State for the match currently being edited
+  const [editingGame, setEditingGame] = useState(null);
 
-  const { players, pendingGames, courts, sessionId, currentView, initSession, assignGameToCourt } = useQueueStore();
+  const { 
+    players, pendingGames, courts, sessionId, currentView, 
+    initSession, assignGameToCourt 
+  } = useQueueStore();
 
   useEffect(() => { initSession(); }, [initSession]);
 
@@ -59,20 +67,42 @@ function App() {
         {currentView === 'LIVE_QUEUE' && (
           <div className="h-full p-4 flex gap-4 overflow-x-auto">
             <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
+              
+              {/* Available Players Column */}
               <div className="min-w-[300px] w-1/4 h-full">
-                <KanbanColumn id="col-available" title="Available" icon={Users} items={players} colorTheme={{ bg: 'bg-gray-200', headerBg: 'bg-gray-300', headerText: 'text-gray-700' }} />
+                <KanbanColumn 
+                  id="col-available" 
+                  title="Available" 
+                  icon={Users} 
+                  items={players} 
+                  colorTheme={{ bg: 'bg-gray-200', headerBg: 'bg-gray-300', headerText: 'text-gray-700' }} 
+                />
               </div>
+
+              {/* Pending Matches Column (With Edit Callback) */}
               <div className="min-w-[350px] w-1/3 h-full">
-                <KanbanColumn id="col-pending" title="Pending Matches" icon={LayoutGrid} items={pendingGames} colorTheme={{ bg: 'bg-slate-200', headerBg: 'bg-slate-300', headerText: 'text-slate-700' }} />
+                <KanbanColumn 
+                  id="col-pending" 
+                  title="Pending Matches" 
+                  icon={LayoutGrid} 
+                  items={pendingGames} 
+                  onEditMatch={(game) => setEditingGame(game)}
+                  colorTheme={{ bg: 'bg-slate-200', headerBg: 'bg-slate-300', headerText: 'text-slate-700' }} 
+                />
               </div>
+
+              {/* Active Courts Section */}
               <section className="bg-emerald-100 rounded-lg flex flex-col min-w-[400px] flex-1 shadow-inner border border-emerald-200 overflow-hidden">
-                <div className="p-3 bg-emerald-200 font-bold text-emerald-800 flex items-center gap-2 shrink-0">
+                <div className="p-3 bg-emerald-200 font-bold text-emerald-800 flex items-center gap-2 shrink-0 border-b border-emerald-300/50">
                   <Activity size={20} /> Active Courts
                 </div>
                 <div className="flex-1 p-4 overflow-y-auto grid grid-cols-1 xl:grid-cols-2 gap-4 content-start">
-                  {courts.map(court => <ActiveCourtCard key={court.id} court={court} />)}
+                  {courts.map(court => (
+                    <ActiveCourtCard key={court.id} court={court} />
+                  ))}
                 </div>
               </section>
+
             </DndContext>
           </div>
         )}
@@ -86,8 +116,16 @@ function App() {
         )}
       </main>
 
+      {/* Modals */}
       <AddPlayerModal isOpen={isAddPlayerOpen} onClose={() => setIsAddPlayerOpen(false)} />
-      <DraftMatchModal isOpen={isDraftMatchOpen} onClose={() => setIsDraftMatchOpen(false)} />
+      
+      {/* Draft Match Modal handles both Create and Edit modes */}
+      <DraftMatchModal 
+        isOpen={isDraftMatchOpen || !!editingGame} 
+        onClose={() => { setIsDraftMatchOpen(false); setEditingGame(null); }} 
+        initialData={editingGame}
+      />
+      
       <BulkUploadModal isOpen={isBulkOpen} onClose={() => setIsBulkOpen(false)} target={bulkTarget} />
     </div>
   );

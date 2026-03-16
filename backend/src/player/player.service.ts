@@ -37,10 +37,13 @@ export class PlayerService {
         levelWeight: member.levelWeight,
         gender: member.gender,
         sessionId: sessionId,
-        memberId: member.id
+        memberId: member.id, // CRITICAL: This links the session player to the global member
+        status: 'ACTIVE',
+        paymentStatus: 'UNPAID'
       }
     });
   }
+
 
   async getGlobalRoster() {
     return this.prisma.member.findMany({ orderBy: { name: 'asc' } });
