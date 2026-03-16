@@ -4,6 +4,8 @@ import { io } from 'socket.io-client';
 // Keep your Tailscale IP!
 const API_URL = 'http://100.88.175.25:3000'; 
 
+
+
 const useQueueStore = create((set, get) => ({
   sessionId: null,
   socket: null,
@@ -12,8 +14,13 @@ const useQueueStore = create((set, get) => ({
   pendingGames: [],
   courts: [
     { id: 'c1', number: 1, name: 'Court 1', activeGame: null },
-    { id: 'c2', number: 2, name: 'Championship Court', activeGame: null }
+    { id: 'c2', number: 2, name: 'Court 2', activeGame: null },
+    { id: 'c3', number: 3, name: 'Court 3', activeGame: null },
+    { id: 'c4', number: 4, name: 'Court 4', activeGame: null },
   ],
+  currentView: 'LIVE_QUEUE', // Possible values: 'LIVE_QUEUE', 'PLAYER_ROSTER', 'HISTORY', 'REPORTS'
+  setView: (view) => set({ currentView: view }),
+
 
   initSession: async () => {
     if (get().socket) return; 
