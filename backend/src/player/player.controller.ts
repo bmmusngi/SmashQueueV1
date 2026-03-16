@@ -42,4 +42,10 @@ export class PlayerController {
   update(@Param('id') id: string, @Body() updateData: any) {
     return this.playerService.updatePlayer(id, updateData);
   }
+  
+  @Patch('member/:id')
+  updateMember(@Param('id') id: string, @Body() updateData: any) {
+    return this.playerService.updateMember(id, updateData);
+  }
+
 }

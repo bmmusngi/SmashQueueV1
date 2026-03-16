@@ -16,6 +16,24 @@ const useQueueStore = create((set, get) => ({
     { id: 'c1', number: 1, name: 'Court 1', activeGame: null },
     { id: 'c2', number: 2, name: 'Championship Court', activeGame: null }
   ],
+  
+  updateMember: async (memberId, updatedData) => {
+    try {
+      await fetch(`${API_URL}/players/member/${memberId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedData)
+      });
+      // Refresh the global roster to show the changes
+      const { fetchGlobalPlayers } = get();
+      await fetchGlobalPlayers();
+      return true;
+    } catch (error) {
+      console.error("Failed to update member:", error);
+      return false;
+    }
+  },
+
 
   setView: (view) => set({ currentView: view }),
 
@@ -104,17 +122,29 @@ const useQueueStore = create((set, get) => ({
     } catch (e) { console.error("Global fetch error:", e); }
   },
 
-  inviteToSession: async (memberId) => {
-    const { sessionId } = get();
+    inviteToSession: async (memberId) => {
+    const { sessionId, API_URL } = get();
     try {
-      await fetch(`${API_URL}/players/${memberId}/join-session`, {
+      const res = await fetch(`${API_URL}/players/${memberId}/join-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId })
       });
-      window.location.reload();
-    } catch (e) { console.error(e); }
+      
+      if (res.ok) {
+        const newPlayer = await res.json();
+        // Update local state immediately so the UI reflects the "In Session" status
+        set((state) => ({
+          players: [...state.players, newPlayer]
+        }));
+        // Optional: Trigger a socket update if you have multiple tablets open
+        get().socket?.emit('updateBoardState', { sessionId, action: 'ADD_PLAYER' });
+      }
+    } catch (e) {
+      console.error("Invite error:", e);
+    }
   },
+
 
   bulkUpload: async (playersArray, target) => {
     const { sessionId } = get();

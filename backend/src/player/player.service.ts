@@ -62,4 +62,12 @@ export class PlayerService {
       data,
     });
   }
+  
+  async updateMember(id: string, data: any) {
+    return this.prisma.member.update({
+      where: { id },
+      data,
+    });
+  }
+
 }
