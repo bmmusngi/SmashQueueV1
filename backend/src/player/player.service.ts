@@ -6,9 +6,17 @@ export class PlayerService {
   constructor(private prisma: PrismaService) {}
 
   // Create a single session player (Walk-in)
+    // Update this method in PlayerService
   async createPlayer(data: any) {
-    return this.prisma.player.create({ data });
+    return this.prisma.player.create({
+      data: {
+        ...data,
+        levelWeight: data.levelWeight ?? 2, // Default to 2 if null
+        gender: data.gender ?? 'M',         // Default to M if null
+      }
+    });
   }
+
 
   // Global Roster: Bulk Registration
   async bulkCreateGlobal(members: any[]) {
