@@ -1,164 +1,163 @@
 import React, { useState } from 'react';
-import { X, UserPlus, CheckCircle2 } from 'lucide-react';
+import { X, UserPlus } from 'lucide-react';
 import useQueueStore from '../store/useQueueStore';
 
 export default function AddPlayerModal({ isOpen, onClose }) {
   const addPlayer = useQueueStore((state) => state.addPlayer);
-  
+
+  // Form State
   const [name, setName] = useState('');
-  const [levelWeight, setLevelWeight] = useState(''); // Empty string = null/default
-  const [gender, setGender] = useState(''); // Empty string = null/default
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [levelWeight, setLevelWeight] = useState(1);
+  const [gender, setGender] = useState('M');
+  const [paymentStatus, setPaymentStatus] = useState('UNPAID');
+  const [paymentMode, setPaymentMode] = useState('Cash');
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name.trim()) return;
-
-    setIsSubmitting(true);
     
-    const payload = {
+    // Construct the new player object
+    const newPlayer = {
       name: name.trim(),
-      // Send null if not selected so backend can apply defaults
-      levelWeight: levelWeight ? parseInt(levelWeight) : null,
-      gender: gender || null,
+      levelWeight: Number(levelWeight),
+      gender,
       status: 'ACTIVE',
-      paymentStatus: 'UNPAID'
+      paymentStatus,
+      // Only attach payment mode if they actually paid
+      paymentMode: paymentStatus === 'PAID' ? paymentMode : null, 
     };
 
-    try {
-      await addPlayer(payload);
-      
-      // Visual feedback loop
-      setShowSuccess(true);
-      setTimeout(() => {
-        setName('');
-        setLevelWeight('');
-        setGender('');
-        setShowSuccess(false);
-        setIsSubmitting(false);
-        onClose();
-      }, 800);
-    } catch (error) {
-      console.error("Failed to add player:", error);
-      setIsSubmitting(false);
-    }
+    addPlayer(newPlayer);
+    
+    // Reset form and close modal
+    setName('');
+    setLevelWeight(1);
+    setGender('M');
+    setPaymentStatus('UNPAID');
+    setPaymentMode('Cash');
+    onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 touch-none">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
         
         {/* Header */}
-        <div className="p-4 bg-indigo-900 text-white flex justify-between items-center shrink-0">
-          <div className="flex items-center gap-2">
-            <UserPlus size={20} className="text-indigo-400" />
-            <h3 className="font-black uppercase tracking-widest text-xs">Quick Registration</h3>
+        <div className="bg-indigo-600 p-4 flex justify-between items-center text-white">
+          <div className="flex items-center gap-2 font-bold text-lg">
+            <UserPlus size={20} />
+            Add New Player
           </div>
-          <button 
-            onClick={onClose} 
-            className="hover:bg-white/10 p-1 rounded-lg transition-colors"
-          >
+          <button onClick={onClose} className="text-indigo-200 hover:text-white transition-colors">
             <X size={24} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Name Field (Required) */}
-          <div>
-            <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">
-              Player Name <span className="text-rose-500">*</span>
-            </label>
-            <input
-              autoFocus
-              required
-              type="text"
-              placeholder="e.g. Juan Dela Cruz"
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            {/* Level Field (Optional) */}
-            <div>
-              <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">
-                Skill Level (Optional)
-              </label>
-              <select
-                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 transition-all appearance-none"
-                value={levelWeight}
-                onChange={(e) => setLevelWeight(e.target.value)}
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          
+          {/* Name & Gender Row */}
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Player Name</label>
+              <input 
+                type="text" 
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                placeholder="e.g. Juan"
+              />
+            </div>
+            <div className="w-24">
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Gender</label>
+              <select 
+                value={gender}
+                onChange={(e) => setGender(e.target.value)}
+                className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
               >
-                <option value="">Unknown</option>
-                {[1, 2, 3, 4, 5].map((lvl) => (
-                  <option key={lvl} value={lvl}>Level {lvl}</option>
-                ))}
+                <option value="M">M</option>
+                <option value="F">F</option>
               </select>
             </div>
+          </div>
 
-            {/* Gender Field (Optional) */}
-            <div>
-              <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 tracking-wider">
-                Gender (Optional)
+          {/* Skill Level */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Skill Level (Palag Weight)</label>
+            <select 
+              value={levelWeight}
+              onChange={(e) => setLevelWeight(e.target.value)}
+              className="w-full border border-gray-300 rounded p-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+            >
+              <option value="1">Beginner (1)</option>
+              <option value="2">Intermediate (2)</option>
+              <option value="3">Advanced (3)</option>
+              <option value="4">Expert (4)</option>
+              <option value="5">VIP (5)</option>
+            </select>
+          </div>
+
+          {/* Payment Section */}
+          <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
+            <label className="block text-sm font-semibold text-gray-700">Entrance Fee Status</label>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input 
+                  type="radio" 
+                  name="payment" 
+                  value="UNPAID"
+                  checked={paymentStatus === 'UNPAID'}
+                  onChange={(e) => setPaymentStatus(e.target.value)}
+                  className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-sm font-medium text-red-600">Unpaid</span>
               </label>
-              <div className="flex bg-slate-100 p-1 rounded-xl">
-                {['M', 'F'].map((g) => (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => setGender(gender === g ? '' : g)}
-                    className={`flex-1 py-2 rounded-lg font-black text-xs transition-all ${
-                      gender === g 
-                        ? 'bg-white shadow-sm text-indigo-600' 
-                        : 'text-slate-400 hover:text-slate-600'
-                    }`}
-                  >
-                    {g === 'M' ? 'Male' : 'Female'}
-                  </button>
-                ))}
-              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input 
+                  type="radio" 
+                  name="payment" 
+                  value="PAID"
+                  checked={paymentStatus === 'PAID'}
+                  onChange={(e) => setPaymentStatus(e.target.value)}
+                  className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="text-sm font-medium text-green-600">Paid</span>
+              </label>
+            </div>
+
+            {/* Conditionally render Payment Mode based on Paid status */}
+            <div className={`transition-opacity ${paymentStatus === 'PAID' ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+              <label className="block text-xs text-gray-500 mb-1">Mode of Payment</label>
+              <select 
+                value={paymentMode}
+                onChange={(e) => setPaymentMode(e.target.value)}
+                disabled={paymentStatus === 'UNPAID'}
+                className="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white"
+              >
+                <option value="Cash">Cash</option>
+                <option value="GCash">GCash</option>
+                <option value="QRPH">QRPH</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+              </select>
             </div>
           </div>
 
-          {/* Form Info */}
-          <p className="text-[9px] text-slate-400 italic text-center">
-            You can always update these details later in the Players tab.
-          </p>
-
-          {/* Footer Actions */}
-          <div className="pt-2 flex flex-col gap-2">
-            <button
-              type="submit"
-              disabled={isSubmitting || !name.trim()}
-              className={`w-full py-4 rounded-xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 ${
-                showSuccess 
-                  ? 'bg-emerald-500 text-white' 
-                  : 'bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:grayscale'
-              }`}
-            >
-              {showSuccess ? (
-                <>
-                  <CheckCircle2 size={18} /> Player Added!
-                </>
-              ) : isSubmitting ? (
-                'Processing...'
-              ) : (
-                <>
-                  <UserPlus size={18} /> Register Player
-                </>
-              )}
-            </button>
-            
-            <button
-              type="button"
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-3 mt-6 pt-2">
+            <button 
+              type="button" 
               onClick={onClose}
-              className="w-full py-2 text-slate-400 font-black uppercase text-[10px] tracking-widest hover:text-slate-600 transition-colors"
+              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium transition-colors"
             >
               Cancel
+            </button>
+            <button 
+              type="submit" 
+              className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold shadow-md transition-colors"
+            >
+              Add to Queue
             </button>
           </div>
         </form>

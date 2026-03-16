@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { Timer, CheckCircle } from 'lucide-react';
-// IMPORTANT: Ensure this file exists exactly as named!
 import CompleteGameModal from './CompleteGameModal';
 
 export default function ActiveCourtCard({ court }) {
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
-  const [elapsedTime, setElapsedTime] = useState(0);
 
+  // 1. Setup the Drop Zone for Pending Games
   const { setNodeRef, isOver } = useDroppable({
     id: `court-${court.id}`,
     data: { type: 'Court', court }
   });
 
+  // 2. Simple Timer Logic
+  const [elapsedTime, setElapsedTime] = useState(0);
+
   useEffect(() => {
     let interval;
-    if (court?.activeGame?.startedAt) {
+    if (court.activeGame && court.activeGame.startedAt) {
       interval = setInterval(() => {
         const start = new Date(court.activeGame.startedAt).getTime();
         const now = new Date().getTime();
@@ -25,7 +27,7 @@ export default function ActiveCourtCard({ court }) {
       setElapsedTime(0);
     }
     return () => clearInterval(interval);
-  }, [court?.activeGame]);
+  }, [court.activeGame]);
 
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0');
@@ -41,6 +43,7 @@ export default function ActiveCourtCard({ court }) {
           isOver ? 'border-emerald-500 bg-emerald-50' : 'border-emerald-100'
         } p-4 h-48`}
       >
+        {/* Court Header */}
         <div className="flex justify-between items-center mb-3 border-b pb-2">
           <h3 className="font-bold text-lg text-emerald-900">{court.name || `Court ${court.number}`}</h3>
           
@@ -56,15 +59,16 @@ export default function ActiveCourtCard({ court }) {
           )}
         </div>
 
+        {/* Court Content */}
         <div className="flex-1 flex flex-col justify-center">
           {court.activeGame ? (
             <div className="text-center">
               <div className="text-sm font-semibold text-gray-800 mb-1">
-                {court.activeGame.teamA?.map(p => p.name).filter(Boolean).join(' & ') || 'Unknown Players'}
+                {court.activeGame.teamA.map(p => p.name).join(' & ')}
               </div>
               <div className="text-xs font-black text-gray-300 italic mb-1">VS</div>
               <div className="text-sm font-semibold text-gray-800">
-                {court.activeGame.teamB?.map(p => p.name).filter(Boolean).join(' & ') || 'Unknown Players'}
+                {court.activeGame.teamB.map(p => p.name).join(' & ')}
               </div>
             </div>
           ) : (
@@ -74,6 +78,7 @@ export default function ActiveCourtCard({ court }) {
           )}
         </div>
 
+        {/* Complete Game Action */}
         {court.activeGame && (
           <button 
             onClick={() => setIsCompleteModalOpen(true)}
@@ -85,6 +90,7 @@ export default function ActiveCourtCard({ court }) {
         )}
       </div>
 
+      {/* Render the Modal attached to this specific court */}
       <CompleteGameModal 
         isOpen={isCompleteModalOpen} 
         onClose={() => setIsCompleteModalOpen(false)} 

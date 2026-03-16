@@ -7,70 +7,63 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// GLOBAL ROSTER
-model Member {
-  id          String   @id @default(uuid())
-  name        String
-  levelWeight Int      @default(3)
-  gender      String   @default("M")
-  wins        Int      @default(0)
-  losses      Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  players     Player[]
+model Session {
+  id        String   @id // YYYYMMDDXXXXXX
+  status    String   @default("ACTIVE") // ACTIVE, COMPLETED
+  createdAt DateTime @default(now())
+  players   Player[]
+  games     Game[]
 }
 
-// SESSION ATTENDANCE
-model Player {
+model Member {
   id            String   @id @default(uuid())
   name          String
-  levelWeight   Int      @default(3)
-  gender        String   @default("M")
+  levelWeight   Int
+  gender        String
+  wins          Int      @default(0)
+  losses        Int      @default(0)
+  ties          Int      @default(0)
+  createdAt     DateTime @default(now())
   
+  // A member can appear in many sessions as a 'Player'
+  sessionEntries Player[]
+}
+
+model Player {
+  id            String   @id @default(uuid())
   sessionId     String
   session       Session  @relation(fields: [sessionId], references: [id])
-
-  // Optional link to Member (for guests)
-  memberId      String?  
+  
+  // Link to Member (Nullable because walk-ins aren't members)
+  memberId      String?
   member        Member?  @relation(fields: [memberId], references: [id])
 
+  name          String
+  levelWeight   Int
+  gender        String
   status        String   @default("ACTIVE")
   paymentStatus String   @default("UNPAID")
+  paymentMode   String?  // GCash, Cash, QRPH
   
-  teamA_games   Game[]   @relation("TeamA")
-  teamB_games   Game[]   @relation("TeamB")
-
   createdAt     DateTime @default(now())
+
+  gamesAsTeamA  Game[]   @relation("TeamA")
+  gamesAsTeamB  Game[]   @relation("TeamB")
 }
 
-// MATCHES
 model Game {
-  id            String    @id @default(uuid())
-  sessionId     String
-  session       Session   @relation(fields: [sessionId], references: [id])
-  
-  // NOTE: Reverted to string courtId to avoid model dependency
-  courtId       String?   
+  id           String   @id @default(uuid())
+  sessionId    String
+  session      Session  @relation(fields: [sessionId], references: [id])
+  type         String   // SINGLES, DOUBLES
+  status       String   @default("PENDING") // PENDING, ACTIVE, COMPLETED
+  courtId      String?
+  startedAt    DateTime?
+  endedAt      DateTime?
+  shuttlesUsed Int      @default(0)
+  winner       String?  // Team A, Team B
 
-  type          String    @default("DOUBLES")
-  status        String    @default("PENDING")
-  winner        String?   
-  shuttlesUsed  Int       @default(0)
-  
-  teamA         Player[]  @relation("TeamA")
-  teamB         Player[]  @relation("TeamB")
-  
-  startedAt     DateTime?
-  endedAt       DateTime?
-  createdAt     DateTime  @default(now())
-}
-
-// QUEUING SESSIONS
-model Session {
-  id          String    @id @default(uuid())
-  date        DateTime  @default(now())
-  status      String    @default("ACTIVE")
-  players     Player[]
-  games       Game[]
+  teamA        Player[] @relation("TeamA")
+  teamB        Player[] @relation("TeamB")
+  createdAt    DateTime @default(now())
 }

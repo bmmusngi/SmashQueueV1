@@ -15,11 +15,7 @@
     "strictNullChecks": false,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false,
-    "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "isolatedModules": true
-  },
-  "exclude": ["node_modules", "dist"]
+    "forceConsistentCasingInFileNames": false,
+    "noFallthroughCasesInSwitch": false
+  }
 }
