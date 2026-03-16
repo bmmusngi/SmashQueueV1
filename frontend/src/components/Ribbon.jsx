@@ -6,12 +6,11 @@ import {
   BarChart3, 
   Plus, 
   Swords, 
-  LogOut, 
-  Upload
+  LogOut,
+  FileUp // Using FileUp as it's more common in older lucide versions
 } from 'lucide-react';
 import useQueueStore from '../store/useQueueStore';
 
-// MOVE STATIC DATA OUTSIDE: This prevents unnecessary re-creations during render
 const MODULES = [
   { id: 'LIVE_QUEUE', label: 'Live Queue', icon: LayoutGrid },
   { id: 'PLAYER_ROSTER', label: 'Players', icon: Users },
@@ -26,7 +25,6 @@ export default function Ribbon({ onAddPlayer, onDraftMatch, onBulkUpload }) {
 
   return (
     <div className="bg-white border-b border-gray-200 shadow-sm z-20 shrink-0">
-      {/* Tier 1: Main Modules */}
       <div className="flex items-center px-4 bg-slate-50 border-b border-gray-100 overflow-x-auto no-scrollbar">
         {MODULES.map((mod) => {
           const Icon = mod.icon;
@@ -48,46 +46,30 @@ export default function Ribbon({ onAddPlayer, onDraftMatch, onBulkUpload }) {
         })}
       </div>
 
-      {/* Tier 2: Contextual Actions */}
       <div className="flex items-center justify-between px-4 py-2 bg-white min-h-[52px]">
         <div className="flex gap-2">
           {currentView === 'LIVE_QUEUE' && (
             <>
-              <button 
-                onClick={onAddPlayer}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded text-[10px] font-black uppercase hover:bg-indigo-700 transition-all shadow-sm active:scale-95"
-              >
+              <button onClick={onAddPlayer} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded text-[10px] font-black uppercase hover:bg-indigo-700 transition-all shadow-sm active:scale-95">
                 <Plus size={14} /> Add Player
               </button>
-              <button 
-                onClick={onDraftMatch}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded text-[10px] font-black uppercase hover:bg-emerald-700 transition-all shadow-sm active:scale-95"
-              >
+              <button onClick={onDraftMatch} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded text-[10px] font-black uppercase hover:bg-emerald-700 transition-all shadow-sm active:scale-95">
                 <Swords size={14} /> Draft Match
               </button>
-              <button 
-                onClick={() => onBulkUpload('SESSION')}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded text-[10px] font-black uppercase hover:bg-black transition-all shadow-sm active:scale-95"
-              >
-                <Upload size={14} /> Bulk Add
+              <button onClick={() => onBulkUpload('SESSION')} className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded text-[10px] font-black uppercase hover:bg-black transition-all shadow-sm active:scale-95">
+                <FileUp size={14} /> Bulk Add
               </button>
             </>
           )}
           
           {currentView === 'PLAYER_ROSTER' && (
-            <button 
-              onClick={() => onBulkUpload('GLOBAL')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded text-[10px] font-black uppercase hover:bg-indigo-700 transition-all shadow-sm active:scale-95"
-            >
+            <button onClick={() => onBulkUpload('GLOBAL')} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded text-[10px] font-black uppercase hover:bg-indigo-700 transition-all shadow-sm active:scale-95">
               <Plus size={14} /> Register Member
             </button>
           )}
         </div>
 
-        <button 
-          onClick={resetSession}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-rose-600 hover:bg-rose-50 rounded text-[10px] font-black uppercase transition-all"
-        >
+        <button onClick={resetSession} className="flex items-center gap-1.5 px-3 py-1.5 text-rose-600 hover:bg-rose-50 rounded text-[10px] font-black uppercase transition-all">
           <LogOut size={14} /> End Day
         </button>
       </div>
