@@ -1,0 +1,92 @@
+import React, { useState, useEffect } from 'react';
+import { useDroppable } from '@dnd-kit/core';
+import { Timer, CheckCircle } from 'lucide-react';
+
+export default function ActiveCourtCard({ court }) {
+  // 1. Setup the Drop Zone for Pending Games
+  const { setNodeRef, isOver } = useDroppable({
+    id: `court-${court.id}`,
+    data: { type: 'Court', court }
+  });
+
+  // 2. Simple Timer Logic
+  const [elapsedTime, setElapsedTime] = useState(0);
+
+  useEffect(() => {
+    let interval;
+    // Only run the timer if there is an active game on this court
+    if (court.activeGame && court.activeGame.startedAt) {
+      interval = setInterval(() => {
+        const start = new Date(court.activeGame.startedAt).getTime();
+        const now = new Date().getTime();
+        setElapsedTime(Math.floor((now - start) / 1000));
+      }, 1000);
+    } else {
+      setElapsedTime(0);
+    }
+    return () => clearInterval(interval);
+  }, [court.activeGame]);
+
+  // Format seconds into MM:SS
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`relative flex flex-col bg-white rounded-lg shadow border-2 transition-colors ${
+        isOver ? 'border-emerald-500 bg-emerald-50' : 'border-emerald-100'
+      } p-4 h-48`}
+    >
+      {/* Court Header */}
+      <div className="flex justify-between items-center mb-3 border-b pb-2">
+        <h3 className="font-bold text-lg text-emerald-900">{court.name || `Court ${court.number}`}</h3>
+        
+        {/* Timer Display */}
+        {court.activeGame ? (
+          <div className={`flex items-center gap-1 font-mono font-bold px-2 py-1 rounded ${
+            elapsedTime > 1200 ? 'bg-red-100 text-red-700 animate-pulse' : 'bg-slate-100 text-slate-700'
+          }`}>
+            <Timer size={16} />
+            {formatTime(elapsedTime)}
+          </div>
+        ) : (
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Empty</span>
+        )}
+      </div>
+
+      {/* Court Content (The Active Game) */}
+      <div className="flex-1 flex flex-col justify-center">
+        {court.activeGame ? (
+          <div className="text-center">
+            <div className="text-sm font-semibold text-gray-800 mb-1">
+              {court.activeGame.teamA.map(p => p.name).join(' & ')}
+            </div>
+            <div className="text-xs font-black text-gray-300 italic mb-1">VS</div>
+            <div className="text-sm font-semibold text-gray-800">
+              {court.activeGame.teamB.map(p => p.name).join(' & ')}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center text-gray-400 text-sm italic">
+            Drag a pending game here to start
+          </div>
+        )}
+      </div>
+
+      {/* Complete Game Action */}
+      {court.activeGame && (
+        <button 
+          onClick={() => alert(`Trigger Shuttle Tracking Prompt for Court ${court.number}`)}
+          className="mt-3 w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded flex justify-center items-center gap-2 transition-colors"
+        >
+          <CheckCircle size={18} />
+          Complete Game
+        </button>
+      )}
+    </div>
+  );
+}

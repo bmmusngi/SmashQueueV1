@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model QueueSession {
+  id        String   @id @default(uuid())
+  queueId   String   @unique // Format: YYYYMMDDNNAAAA (e.g., 2026031501A7B2)
+  createdAt DateTime @default(now())
+  isActive  Boolean  @default(true)
+  
+  players   Player[]
+  courts    Court[]
+  games     Game[]
+}
+
+model Player {
+  id            String   @id @default(uuid())
+  sessionId     String
+  session       QueueSession @relation(fields: [sessionId], references: [id])
+  
+  name          String
+  levelWeight   Int      // 1=Beginner, 2=Intermediate, 3=Advanced, 4=Expert, 5=VIP
+  gender        String   // "M" or "F"
+  
+  status        String   @default("ACTIVE") // ACTIVE, INACTIVE, RESTING, NO_SHOW
+  paymentStatus String   @default("UNPAID") // PAID, UNPAID
+  paymentMode   String?  // CASH, GCASH, QRPH, BANK_TRANSFER
+  
+  gamesPlayed   Int      @default(0)
+  createdAt     DateTime @default(now())
+}
+
+model Court {
+  id        String   @id @default(uuid())
+  sessionId String
+  session   QueueSession @relation(fields: [sessionId], references: [id])
+  
+  number    Int
+  name      String?  // e.g., "Championship Court"
+  games     Game[]
+}
+
+model Game {
+  id                String   @id @default(uuid())
+  sessionId         String
+  session           QueueSession @relation(fields: [sessionId], references: [id])
+  courtId           String?
+  court             Court?   @relation(fields: [courtId], references: [id])
+  
+  status            String   @default("PENDING") // PENDING, ACTIVE, COMPLETED, CANCELLED
+  type              String   // SINGLES, DOUBLES (Mixed/Same)
+  
+  // Storing player IDs as JSON array for flexibility (e.g., Team A vs Team B)
+  teamA_PlayerIds   String[] 
+  teamB_PlayerIds   String[]
+  
+  // Post-Game Logging
+  resultTag         String?  // TEAM_A_WIN, TEAM_B_WIN, TIE, NO_BEARING
+  shuttlesNew       Int      @default(0)
+  shuttlesUsed      Int      @default(0)
+  shuttlesLabas     Int      @default(0)
+  
+  startedAt         DateTime?
+  completedAt       DateTime?
+}
