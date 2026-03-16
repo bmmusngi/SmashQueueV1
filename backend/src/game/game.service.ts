@@ -1,23 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class GameService {
   constructor(private prisma: PrismaService) {}
 
-  async createGame(data: Prisma.GameCreateInput) {
-    return this.prisma.game.create({
-      data,
-      include: { teamA: true, teamB: true }
-    });
-  }
-
-  // --- ADD THIS METHOD ---
+  // 1. SAFE UPDATE: Handles nested team updates
   async updateGame(id: string, data: any) {
     return this.prisma.game.update({
       where: { id },
-      data,
+      data: {
+        type: data.type,
+        // We use 'set' to replace the teams with the new selection
+        teamA: data.teamA?.set ? { set: data.teamA.set } : undefined,
+        teamB: data.teamB?.set ? { set: data.teamB.set } : undefined,
+      },
       include: { teamA: true, teamB: true }
     });
   }
@@ -26,19 +23,32 @@ export class GameService {
     return this.prisma.game.findMany({
       where: { sessionId },
       include: { teamA: true, teamB: true },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' }, // Descending often better for recent matches
     });
   }
 
+  // 2. ASSIGN TO COURT: Now uses the String courtId from our new schema
   async assignToCourt(gameId: string, courtId: string) {
     return this.prisma.game.update({
       where: { id: gameId },
-      data: {
+      data: { 
+        courtId: courtId, 
         status: 'ACTIVE',
-        courtId: courtId,
         startedAt: new Date(),
       },
-      include: { teamA: true, teamB: true }
+    });
+  }
+
+  // 3. CREATE GAME: Explicitly connects the Session and Teams
+  async createGame(data: any) {
+    return this.prisma.game.create({
+      data: {
+        session: { connect: { id: data.session?.connect?.id || data.sessionId } },
+        type: data.type || 'DOUBLES',
+        status: 'PENDING',
+        teamA: { connect: data.teamA?.connect || [] },
+        teamB: { connect: data.teamB?.connect || [] },
+      },
     });
   }
 
@@ -47,9 +57,9 @@ export class GameService {
       where: { id: gameId },
       data: {
         status: 'COMPLETED',
-        courtId: null,
+        courtId: null, // Frees up the hardcoded court ID
         endedAt: new Date(),
-        shuttlesUsed: shuttlesUsed,
+        shuttlesUsed: shuttlesUsed || 0,
         winner: winner,
       },
       include: { teamA: true, teamB: true }

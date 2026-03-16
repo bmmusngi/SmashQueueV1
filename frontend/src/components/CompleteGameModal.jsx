@@ -8,24 +8,26 @@ export default function CompleteGameModal({ isOpen, onClose, court }) {
   const [winner, setWinner] = useState('');
   const [shuttlesUsed, setShuttlesUsed] = useState(1);
 
-  if (!isOpen || !court || !court.activeGame) return null;
+  // Added extra safety check for court.activeGame
+  if (!isOpen || !court?.activeGame) return null;
 
   const game = court.activeGame;
   
-  // Format team names for the UI
-  const teamAName = game.teamA.map(p => p.name).join(' & ');
-  const teamBName = game.teamB.map(p => p.name).join(' & ');
+  // SAFE DATA ACCESS: Prevents .map() crashes
+  const teamAName = game.teamA?.map(p => p.name).filter(Boolean).join(' & ') || 'Team A';
+  const teamBName = game.teamB?.map(p => p.name).filter(Boolean).join(' & ') || 'Team B';
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Call the store action to update DB and clear the court
-    completeGame(court.id, game.id, {
-      winner: winner || null, // Allow no winner (e.g., practice game)
-      shuttlesUsed: Number(shuttlesUsed)
-    });
+    // Ensure IDs exist before calling the store
+    if (court.id && game.id) {
+      completeGame(court.id, game.id, {
+        winner: winner || null,
+        shuttlesUsed: Number(shuttlesUsed)
+      });
+    }
 
-    // Reset and close
     setWinner('');
     setShuttlesUsed(1);
     onClose();
@@ -39,7 +41,7 @@ export default function CompleteGameModal({ isOpen, onClose, court }) {
         <div className="bg-emerald-50 p-4 flex justify-between items-center text-emerald-900 border-b border-emerald-100">
           <div className="flex items-center gap-2 font-bold text-lg">
             <Trophy size={20} className="text-emerald-600" />
-            Complete Match: {court.name}
+            Complete Match: {court.name || 'Active Court'}
           </div>
           <button onClick={onClose} className="text-emerald-600 hover:text-emerald-800 transition-colors">
             <X size={24} />
@@ -47,8 +49,6 @@ export default function CompleteGameModal({ isOpen, onClose, court }) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6">
-          
-          {/* Winner Selection */}
           <div className="mb-6">
             <label className="block text-sm font-bold text-gray-700 mb-3 text-center">Who won?</label>
             <div className="flex flex-col gap-2">
@@ -73,13 +73,12 @@ export default function CompleteGameModal({ isOpen, onClose, court }) {
             </div>
           </div>
 
-          {/* Shuttle Tracking */}
           <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
             <div className="flex items-center gap-2 mb-2 text-slate-700 font-bold text-sm">
               <Target size={16} />
               Shuttlecock Usage
             </div>
-            <p className="text-xs text-slate-500 mb-3">How many new shuttlecocks were consumed in this game?</p>
+            <p className="text-xs text-slate-500 mb-3">How many new shuttlecocks were used?</p>
             <input 
               type="number" 
               min="0"
@@ -91,7 +90,6 @@ export default function CompleteGameModal({ isOpen, onClose, court }) {
             />
           </div>
 
-          {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded font-medium transition-colors">
               Cancel
