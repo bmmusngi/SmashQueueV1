@@ -7,74 +7,72 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Session {
-  id        String   @id // YYYYMMDDXXXXXX
-  status    String   @default("ACTIVE") // ACTIVE, COMPLETED
-  createdAt DateTime @default(now())
-  players   Player[]
-  games     Game[]
-}
-
+// 1. GLOBAL ROSTER (Permanent Profiles)
 model Member {
-  id            String   @id @default(uuid())
-  name          String
-  levelWeight   Int
-  gender        String
-  wins          Int      @default(0)
-  losses        Int      @default(0)
-  ties          Int      @default(0)
-  createdAt     DateTime @default(now())
-  
-  // A member can appear in many sessions as a 'Player'
-  sessionEntries Player[]
-}
-
-model Player {
-  id            String   @id @default(uuid())
-  sessionId     String
-  session       Session  @relation(fields: [sessionId], references: [id])
-  
-  // Link to Member (Nullable because walk-ins aren't members)
-  memberId      String?
-  member        Member?  @relation(fields: [memberId], references: [id])
-
-  name          String
-  levelWeight   Int
-  gender        String
-  status        String   @default("ACTIVE")
-  paymentStatus String   @default("UNPAID")
-  paymentMode   String?  // GCash, Cash, QRPH
-  
-  createdAt     DateTime @default(now())
-
-  gamesAsTeamA  Game[]   @relation("TeamA")
-  gamesAsTeamB  Game[]   @relation("TeamB")
-}
-
-model Court {
   id          String   @id @default(uuid())
   name        String
+  levelWeight Int      @default(3)
+  gender      String   @default("M")
+  wins        Int      @default(0)
+  losses      Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relation: One member can be a "Player" in many different sessions
+  players     Player[]
+}
+
+// 2. SESSION ATTENDANCE (Today's List)
+model Player {
+  id            String   @id @default(uuid())
+  name          String
+  levelWeight   Int      @default(3)
+  gender        String   @default("M")
+  
+  // Link to the Session
+  sessionId     String
+  session       Session  @relation(fields: [sessionId], references: [id])
+
+  // Link to Global Member (Optional for guests)
+  memberId      String?  
+  member        Member?  @relation(fields: [memberId], references: [id])
+
+  status        String   @default("ACTIVE") // ACTIVE, WAITING, LEFT
+  paymentStatus String   @default("UNPAID")
+  
+  // Relations to Games (Team A or Team B)
+  teamA_games   Game[]   @relation("TeamA")
+  teamB_games   Game[]   @relation("TeamB")
+
+  createdAt     DateTime @default(now())
+}
+
+// 3. PHYSICAL COURTS
+model Court {
+  id          String   @id @default(uuid())
+  name        String   // e.g., "Court 1"
   number      Int      @unique
-  status      String   @default("OPEN")
+  status      String   @default("OPEN") // OPEN, CLOSED, MAINTENANCE
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  // Link to the games played on this court
+  // Games currently or previously played on this court
   games       Game[]
 }
 
+// 4. MATCHES / GAMES
 model Game {
   id            String    @id @default(uuid())
   sessionId     String
   session       Session   @relation(fields: [sessionId], references: [id])
   
-  // Update this section to link to the Court model
+  // Link to the physical Court
   courtId       String?
   court         Court?    @relation(fields: [courtId], references: [id])
 
-  type          String    @default("DOUBLES")
-  status        String    @default("PENDING")
-  winner        String?
+  type          String    @default("DOUBLES") // SINGLES, DOUBLES
+  status        String    @default("PENDING") // PENDING, ACTIVE, COMPLETED
+  winner        String?   // TEAM_A, TEAM_B, DRAW
   shuttlesUsed  Int       @default(0)
   
   teamA         Player[]  @relation("TeamA")
@@ -85,4 +83,11 @@ model Game {
   createdAt     DateTime  @default(now())
 }
 
-
+// 5. QUEUING SESSIONS
+model Session {
+  id          String    @id @default(uuid())
+  date        DateTime  @default(now())
+  status      String    @default("ACTIVE") // ACTIVE, COMPLETED
+  players     Player[]
+  games       Game[]
+}
