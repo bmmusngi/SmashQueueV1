@@ -51,36 +51,38 @@ model Player {
   gamesAsTeamB  Game[]   @relation("TeamB")
 }
 
-model Game {
-  id           String   @id @default(uuid())
-  sessionId    String
-  session      Session  @relation(fields: [sessionId], references: [id])
-  type         String   // SINGLES, DOUBLES
-  status       String   @default("PENDING") // PENDING, ACTIVE, COMPLETED
-  courtId      String?
-  court        Court?   @relation("CourtToGame", fields: [courtId], references: [id])
-
-  startedAt    DateTime?
-  endedAt      DateTime?
-  shuttlesUsed Int      @default(0)
-  winner       String?  // Team A, Team B
-
-  teamA        Player[] @relation("TeamA")
-  teamB        Player[] @relation("TeamB")
-  createdAt    DateTime @default(now())
-}
-
 model Court {
   id          String   @id @default(uuid())
-  name        String   // e.g., "Court 1" or "Championship Court"
+  name        String
   number      Int      @unique
-  status      String   @default("OPEN") // OPEN, CLOSED, MAINTENANCE
-  capacity    Int      @default(4)      // Standard doubles capacity
+  status      String   @default("OPEN")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  // Link to the games played on this court
+  games       Game[]
+}
 
-  // Relation: A court can have one active game at a time
-  activeGames Game[]   @relation("CourtToGame")
+model Game {
+  id            String    @id @default(uuid())
+  sessionId     String
+  session       Session   @relation(fields: [sessionId], references: [id])
+  
+  // Update this section to link to the Court model
+  courtId       String?
+  court         Court?    @relation(fields: [courtId], references: [id])
+
+  type          String    @default("DOUBLES")
+  status        String    @default("PENDING")
+  winner        String?
+  shuttlesUsed  Int       @default(0)
+  
+  teamA         Player[]  @relation("TeamA")
+  teamB         Player[]  @relation("TeamB")
+  
+  startedAt     DateTime?
+  endedAt       DateTime?
+  createdAt     DateTime  @default(now())
 }
 
 
