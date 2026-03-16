@@ -1,54 +1,45 @@
 import React from 'react';
 import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import PlayerCard from './PlayerCard';
+import PendingGameCard from './PendingGameCard'; // Make sure this is imported!
 
 export default function KanbanColumn({ id, title, icon: Icon, items, colorTheme }) {
-  // 1. Setup the Drop Zone
-  const { setNodeRef, isOver } = useDroppable({
-    id: id,
-  });
+  // Setup the drop zone for dnd-kit
+  const { setNodeRef } = useDroppable({ id });
 
   return (
-    <section 
-      className={`flex flex-col h-full rounded-lg shadow-inner transition-colors ${colorTheme.bg} ${isOver ? 'ring-2 ring-indigo-400' : ''}`}
-    >
-      {/* 2. Column Header */}
-      <div className={`p-3 rounded-t-lg font-bold flex items-center justify-between ${colorTheme.headerBg} ${colorTheme.headerText}`}>
+    <div className={`flex flex-col h-full rounded-lg shadow-sm border ${colorTheme.bg} border-gray-200`}>
+      {/* Column Header */}
+      <div className={`p-3 rounded-t-lg font-bold flex items-center justify-between border-b border-black/5 ${colorTheme.headerBg} ${colorTheme.headerText}`}>
         <div className="flex items-center gap-2">
-          {Icon && <Icon size={20} />}
+          <Icon size={18} />
           {title}
         </div>
-        {/* Count badge */}
-        <span className="bg-white/50 px-2 py-0.5 rounded-full text-xs">
+        <span className="bg-black/10 px-2 py-0.5 rounded-full text-xs">
           {items.length}
         </span>
       </div>
 
-      {/* 3. The Droppable Area & Sortable Context */}
+      {/* Column Body (Drop Zone) */}
       <div 
         ref={setNodeRef} 
-        className="flex-1 p-2 overflow-y-auto"
+        className="flex-1 p-3 overflow-y-auto flex flex-col gap-3 min-h-[150px]"
       >
-        {/* SortableContext requires an array of unique identifiers (items.map(i => i.id)). 
-          This tells dnd-kit exactly how to animate the list when a card is dragged over it.
-        */}
-        <SortableContext 
-          items={items.map((item) => item.id)} 
-          strategy={verticalListSortingStrategy}
-        >
-          {items.map((player) => (
-            <PlayerCard key={player.id} player={player} />
-          ))}
-        </SortableContext>
+        {items.map((item) => {
+          // THE FIX: Conditionally render the correct card UI
+          if (id === 'col-pending') {
+            return <PendingGameCard key={item.id} game={item} />;
+          }
+          
+          return <PlayerCard key={item.id} player={item} />;
+        })}
 
-        {/* Empty State Placeholder */}
         {items.length === 0 && (
-          <div className="h-full flex items-center justify-center border-2 border-dashed border-gray-400/30 rounded-lg m-2">
-            <p className="text-center text-gray-500 text-sm italic">Drop players here</p>
+          <div className="h-full flex items-center justify-center text-sm font-medium opacity-40 text-center italic">
+            Drag items here
           </div>
         )}
       </div>
-    </section>
+    </div>
   );
 }
