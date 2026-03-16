@@ -1,73 +1,53 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class PlayerService {
   constructor(private prisma: PrismaService) {}
 
-  // Create a single session player (Walk-in)
-  async createPlayer(data: any) {
-    return this.prisma.player.create({ data });
+  async getGlobalRoster() {
+    return this.prisma.member.findMany({
+      orderBy: { name: 'asc' },
+    });
   }
 
-  // Global Roster: Bulk Registration
-  async bulkCreateGlobal(members: any[]) {
-    return this.prisma.$transaction(
-      members.map(m => this.prisma.member.create({ data: m }))
-    );
+  async getPlayersBySession(sessionId: string) {
+    return this.prisma.player.findMany({
+      where: { sessionId },
+      include: { member: true },
+    });
   }
 
-  // Session: Bulk Walk-in Add
-  async bulkCreateSession(players: any[], sessionId: string) {
-    return this.prisma.$transaction(
-      players.map(p => this.prisma.player.create({
-        data: { ...p, sessionId }
-      }))
-    );
-  }
+  // THE FIX: Logic to convert a Global Member into a Session Player
+  async joinSession(memberId: string, sessionId: string) {
+    // 1. Find the member details
+    const member = await this.prisma.member.findUnique({
+      where: { id: memberId },
+    });
 
-  // Invite Member to Session
-  async cloneToSession(memberId: string, sessionId: string) {
-    const member = await this.prisma.member.findUnique({ where: { id: memberId } });
-    if (!member) throw new Error('Member not found');
-    
+    if (!member) throw new NotFoundException('Member not found');
+
+    // 2. Create a new Player record linked to this session
+    // We 'clone' the member's data into the Player record for the session
     return this.prisma.player.create({
       data: {
         name: member.name,
         levelWeight: member.levelWeight,
         gender: member.gender,
         sessionId: sessionId,
-        memberId: member.id, // CRITICAL: This links the session player to the global member
+        memberId: member.id, // Links back to the global member profile
         status: 'ACTIVE',
-        paymentStatus: 'UNPAID'
-      }
+      },
+      include: {
+        member: true, // Crucial for frontend to see the link
+      },
     });
   }
 
-
-  async getGlobalRoster() {
-    return this.prisma.member.findMany({ orderBy: { name: 'asc' } });
-  }
-
-  async getPlayersBySession(sessionId: string) {
-    return this.prisma.player.findMany({ 
-      where: { sessionId },
-      orderBy: { createdAt: 'asc' }
-    });
-  }
-
-  async updatePlayer(id: string, data: any) {
-    return this.prisma.player.update({
-      where: { id },
-      data,
-    });
-  }
-  
   async updateMember(id: string, data: any) {
     return this.prisma.member.update({
       where: { id },
       data,
     });
   }
-
 }
