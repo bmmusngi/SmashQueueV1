@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { io } from 'socket.io-client';
 
-// UPDATE THIS TO YOUR TAILSCALE IP
+// Ensure this is your actual Tailscale IP
 const API_URL = 'http://100.88.175.25:3000'; 
 
 const useQueueStore = create((set, get) => ({
@@ -20,34 +20,55 @@ const useQueueStore = create((set, get) => ({
   setView: (view) => set({ currentView: view }),
 
   initSession: async () => {
+    // Only init once
     if (get().socket) return; 
+
     try {
-      let sessionRes = await fetch(`${API_URL}/sessions/active`);
-      let sessionText = await sessionRes.text();
+      console.log("Starting session init...");
+      
+      // 1. Get Active Session
+      const sessionRes = await fetch(`${API_URL}/sessions/active`);
+      if (!sessionRes.ok) throw new Error("Backend not responding");
+      
+      const sessionText = await sessionRes.text();
       let session = sessionText ? JSON.parse(sessionText) : null;
+
       if (!session) {
         const createRes = await fetch(`${API_URL}/sessions`, { method: 'POST' });
         session = await createRes.json();
       }
+      
       const currentSessionId = session.id;
 
+      // 2. Fetch Players & Games
       const [playersRes, gamesRes] = await Promise.all([
         fetch(`${API_URL}/players/session/${currentSessionId}`),
         fetch(`${API_URL}/games/session/${currentSessionId}`)
       ]);
 
-      const players = await playersRes.json();
-      const allGames = await gamesRes.json();
-      const pendingGames = allGames.filter(g => g.status === 'PENDING');
-      const activeGames = allGames.filter(g => g.status === 'ACTIVE');
+      // Defensive Parsing: Ensure we always have arrays
+      const players = (await playersRes.json()) || [];
+      const allGames = (await gamesRes.json()) || [];
 
-      const updatedCourts = get().courts.map(court => {
+      const pendingGames = allGames.filter(g => g?.status === 'PENDING');
+      const activeGames = allGames.filter(g => g?.status === 'ACTIVE');
+
+      // 3. Map Games to Courts
+      const currentCourts = get().courts || [];
+      const updatedCourts = currentCourts.map(court => {
         const gameOnThisCourt = activeGames.find(g => g.courtId === court.id);
         return { ...court, activeGame: gameOnThisCourt || null };
       });
 
-      set({ sessionId: currentSessionId, players, pendingGames, courts: updatedCourts });
+      // 4. Set State
+      set({ 
+        sessionId: currentSessionId, 
+        players, 
+        pendingGames, 
+        courts: updatedCourts 
+      });
 
+      // 5. Connect Socket
       const socket = io(API_URL);
       socket.on('connect', () => {
         set({ isConnected: true, socket });
@@ -55,33 +76,44 @@ const useQueueStore = create((set, get) => ({
       });
 
       socket.on('boardStateUpdated', (data) => {
-        const { action } = data;
-        if (action === 'REFRESH_ALL' || action === 'RESET_BOARD') {
+        if (data.action === 'REFRESH_ALL' || data.action === 'RESET_BOARD') {
            window.location.reload();
         } else {
-           // We'll let the standard refresh handle most things for now to stay synced
-           get().initSession(); 
+           // Silently re-fetch data to keep in sync
+           const sync = async () => {
+             const pRes = await fetch(`${API_URL}/players/session/${currentSessionId}`);
+             const gRes = await fetch(`${API_URL}/games/session/${currentSessionId}`);
+             set({ players: await pRes.json(), pendingGames: (await gRes.json()).filter(g => g.status === 'PENDING') });
+           };
+           sync();
         }
       });
-    } catch (error) { console.error("Init error:", error); }
+
+    } catch (error) { 
+      console.error("Init error:", error);
+      // Don't leave the Session ID as "..." if it fails
+      set({ sessionId: 'OFFLINE' });
+    }
   },
 
   fetchGlobalPlayers: async () => {
     try {
       const res = await fetch(`${API_URL}/players/global`);
       const data = await res.json();
-      set({ globalPlayers: data });
-    } catch (e) { console.error(e); }
+      set({ globalPlayers: Array.isArray(data) ? data : [] });
+    } catch (e) { console.error("Global fetch error:", e); }
   },
 
   inviteToSession: async (memberId) => {
     const { sessionId } = get();
-    await fetch(`${API_URL}/players/${memberId}/join-session`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId })
-    });
-    window.location.reload(); // Simple sync
+    try {
+      await fetch(`${API_URL}/players/${memberId}/join-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId })
+      });
+      window.location.reload();
+    } catch (e) { console.error(e); }
   },
 
   bulkUpload: async (playersArray, target) => {
@@ -105,11 +137,14 @@ const useQueueStore = create((set, get) => ({
 
   resetSession: async () => {
     const { sessionId } = get();
-    if (!sessionId || !window.confirm("End session?")) return;
-    await fetch(`${API_URL}/sessions/${sessionId}/complete`, { method: 'PATCH' });
-    window.location.reload();
+    if (!sessionId || !window.confirm("End session and clear board?")) return;
+    try {
+      await fetch(`${API_URL}/sessions/${sessionId}/complete`, { method: 'PATCH' });
+      window.location.reload();
+    } catch (e) { console.error(e); }
   },
 
+  // ... (All other functions follow the same pattern of window.location.reload() for now to ensure sync)
   addPlayer: async (p) => {
     const { sessionId } = get();
     await fetch(`${API_URL}/players`, {
