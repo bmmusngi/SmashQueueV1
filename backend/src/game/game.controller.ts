@@ -6,43 +6,29 @@ import { Prisma } from '@prisma/client';
 export class GameController {
   constructor(private readonly gameService: GameService) {}
 
-  // POST http://localhost:3000/games
   @Post()
-create(@Body() createGameDto: Prisma.GameCreateInput) { // Changed to GameCreateInput
-  return this.gameService.createGame(createGameDto);
-}
+  create(@Body() createGameDto: Prisma.GameCreateInput) {
+    return this.gameService.createGame(createGameDto);
+  }
 
-  // GET http://localhost:3000/games/session/:sessionId
   @Get('session/:sessionId')
   findAll(@Param('sessionId') sessionId: string) {
     return this.gameService.getGamesBySession(sessionId);
   }
 
-  // PATCH http://localhost:3000/games/:id/assign
   @Patch(':id/assign')
-  assignToCourt(
-    @Param('id') id: string, 
-    @Body('courtId') courtId: string
-  ) {
+  assign(@Param('id') id: string, @Body('courtId') courtId: string) {
     return this.gameService.assignToCourt(id, courtId);
   }
 
-  // PATCH http://localhost:3000/games/:id/complete
   @Patch(':id/complete')
-  complete(
-    @Param('id') id: string, 
-    @Body() completeData: { shuttlesUsed: number; winner?: string }
-  ) {
-    return this.gameService.completeGame(id, completeData.shuttlesUsed, completeData.winner);
-  }
-  
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateData: any) {
-    return this.prisma.game.update({
-      where: { id },
-      data: updateData,
-      include: { teamA: true, teamB: true }
-    });
+  complete(@Param('id') id: string, @Body() resultData: any) {
+    return this.gameService.completeGame(id, resultData.shuttlesUsed, resultData.winner);
   }
 
+  // --- FIXED THIS LINE: Uses gameService instead of prisma ---
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateData: any) {
+    return this.gameService.updateGame(id, updateData);
+  }
 }

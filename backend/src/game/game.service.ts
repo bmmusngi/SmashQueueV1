@@ -13,6 +13,15 @@ export class GameService {
     });
   }
 
+  // --- ADD THIS METHOD ---
+  async updateGame(id: string, data: any) {
+    return this.prisma.game.update({
+      where: { id },
+      data,
+      include: { teamA: true, teamB: true }
+    });
+  }
+
   async getGamesBySession(sessionId: string) {
     return this.prisma.game.findMany({
       where: { sessionId },
@@ -33,13 +42,12 @@ export class GameService {
     });
   }
 
-  // UPDATED: Finalizes the game in DB
   async completeGame(gameId: string, shuttlesUsed: number, winner?: string) {
     return this.prisma.game.update({
       where: { id: gameId },
       data: {
         status: 'COMPLETED',
-        courtId: null, // Free the court in the DB
+        courtId: null,
         endedAt: new Date(),
         shuttlesUsed: shuttlesUsed,
         winner: winner,
