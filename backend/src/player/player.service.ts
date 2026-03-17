@@ -1,5 +1,4 @@
-// FIX: Added BadRequestException to the import list
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
@@ -19,7 +18,7 @@ export class PlayerService {
     });
   }
 
-  // Logic to convert a Global Member into a Session Player
+  // THE FIX: Logic to convert a Global Member into a Session Player
   async joinSession(memberId: string, sessionId: string) {
     // 1. Find the member details
     const member = await this.prisma.member.findUnique({
@@ -29,6 +28,7 @@ export class PlayerService {
     if (!member) throw new NotFoundException('Member not found');
 
     // 2. Create a new Player record linked to this session
+    // We 'clone' the member's data into the Player record for the session
     return this.prisma.player.create({
       data: {
         name: member.name,
@@ -48,38 +48,6 @@ export class PlayerService {
     return this.prisma.member.update({
       where: { id },
       data,
-    });
-  }
-  
-  // 1. SOFT DELETE / UPDATE STATUS
-  async updatePlayer(id: string, data: any) {
-    return this.prisma.player.update({
-      where: { id },
-      data,
-      include: { member: true } // Keep the member data attached for the UI
-    });
-  }
-  
-  // 2. HARD DELETE (With Safety Check)
-  async removeSessionPlayer(id: string) {
-    // Check if the player exists and include their game history
-    const player = await this.prisma.player.findUnique({
-      where: { id },
-      include: { teamA_games: true, teamB_games: true }
-    });
-    
-    if (!player) throw new NotFoundException('Player not found in session');
-    
-    // If they have been part of ANY game (even pending ones), block the hard delete
-    const hasPlayed = player.teamA_games.length > 0 || player.teamB_games.length > 0;
-    
-    if (hasPlayed) {
-      throw new BadRequestException('Cannot remove a player who has already been drafted into a game.');
-    }
-    
-    // If clean, remove them completely from the session
-    return this.prisma.player.delete({
-      where: { id }
     });
   }
 }
