@@ -14,7 +14,9 @@ const useQueueStore = create((set, get) => ({
   
   courts: [
     { id: 'c1', number: 1, name: 'Court 1', activeGame: null },
-    { id: 'c2', number: 2, name: 'Court 2', activeGame: null }
+    { id: 'c2', number: 2, name: 'Court 2', activeGame: null },
+    { id: 'c3', number: 3, name: 'Court 3', activeGame: null }, 
+    { id: 'c4', number: 4, name: 'Court 4', activeGame: null },
   ],
 
   setView: (view) => set({ currentView: view }),
