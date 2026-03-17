@@ -114,6 +114,71 @@ const useQueueStore = create((set, get) => ({
       }
     } catch (e) { return false; }
   },
+  
+    // --- MATCHMAKING LOGIC ---
+  
+  draftGame: async (matchData) => {
+    const { sessionId } = get();
+    
+    if (!sessionId || sessionId === 'OFFLINE') {
+      alert("Cannot draft match: No active session found.");
+      return;
+    }
+
+    // Format the payload exactly how the backend Prisma expects it
+    const dbPayload = {
+      sessionId: sessionId,
+      type: matchData.type || 'DOUBLES',
+      status: 'PENDING',
+      teamAIds: matchData.teamA.map(p => p.id),
+      teamBIds: matchData.teamB.map(p => p.id)
+    };
+
+    try {
+      const res = await fetch(`${API_URL}/games`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dbPayload)
+      });
+
+      if (res.ok) {
+        // Success! Reload the board to show the new pending match
+        get().initSession();
+      } else {
+        const errText = await res.text();
+        alert(`Failed to draft match: ${errText}`);
+      }
+    } catch (error) {
+      console.error("Draft Error:", error);
+      alert("Network error while drafting match.");
+    }
+  },
+
+  updateGame: async (gameId, matchData) => {
+    const dbPayload = {
+      type: matchData.type,
+      teamAIds: matchData.teamA.map(p => p.id),
+      teamBIds: matchData.teamB.map(p => p.id)
+    };
+
+    try {
+      const res = await fetch(`${API_URL}/games/${gameId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dbPayload)
+      });
+
+      if (res.ok) {
+        get().initSession();
+      } else {
+        const errText = await res.text();
+        alert(`Failed to update match: ${errText}`);
+      }
+    } catch (error) {
+      console.error("Update Error:", error);
+    }
+  },
+
 
   resetSession: async () => {
     const { sessionId } = get();

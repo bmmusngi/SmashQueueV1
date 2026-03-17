@@ -1,23 +1,35 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
-import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class GameService {
   constructor(private prisma: PrismaService) {}
 
-  async createGame(data: Prisma.GameCreateInput) {
+  // 1. FIX: Translate frontend payload into Prisma 'connect' syntax
+  async createGame(data: any) {
     return this.prisma.game.create({
-      data,
+      data: {
+        type: data.type,
+        status: data.status || 'PENDING',
+        session: { connect: { id: data.sessionId } },
+        // Map the flat string arrays into Prisma's expected format
+        teamA: { connect: (data.teamAIds || []).map((id: string) => ({ id })) },
+        teamB: { connect: (data.teamBIds || []).map((id: string) => ({ id })) }
+      },
       include: { teamA: true, teamB: true }
     });
   }
 
-  // --- ADD THIS METHOD ---
+  // 2. FIX: Translate updates using Prisma 'set' syntax to overwrite existing teams
   async updateGame(id: string, data: any) {
     return this.prisma.game.update({
       where: { id },
-      data,
+      data: {
+        type: data.type,
+        // Using 'set' removes the old players and replaces them with the new selection
+        teamA: data.teamAIds ? { set: data.teamAIds.map((id: string) => ({ id })) } : undefined,
+        teamB: data.teamBIds ? { set: data.teamBIds.map((id: string) => ({ id })) } : undefined
+      },
       include: { teamA: true, teamB: true }
     });
   }
