@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+// FIX: Added BadRequestException to the import list
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
@@ -18,7 +19,7 @@ export class PlayerService {
     });
   }
 
-  // THE FIX: Logic to convert a Global Member into a Session Player
+  // Logic to convert a Global Member into a Session Player
   async joinSession(memberId: string, sessionId: string) {
     // 1. Find the member details
     const member = await this.prisma.member.findUnique({
@@ -28,7 +29,6 @@ export class PlayerService {
     if (!member) throw new NotFoundException('Member not found');
 
     // 2. Create a new Player record linked to this session
-    // We 'clone' the member's data into the Player record for the session
     return this.prisma.player.create({
       data: {
         name: member.name,
@@ -51,7 +51,7 @@ export class PlayerService {
     });
   }
   
-    // 1. SOFT DELETE / UPDATE STATUS
+  // 1. SOFT DELETE / UPDATE STATUS
   async updatePlayer(id: string, data: any) {
     return this.prisma.player.update({
       where: { id },
@@ -82,5 +82,4 @@ export class PlayerService {
       where: { id }
     });
   }
-  
 }
