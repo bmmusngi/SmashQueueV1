@@ -7,7 +7,8 @@ import {
   Plus, 
   Swords, 
   LogOut, 
-  Upload  // <--- Ensure this is here
+  Upload,
+  Layers // Added icon for Groups
 } from 'lucide-react';
 import useQueueStore from '../store/useQueueStore';
 
@@ -16,10 +17,12 @@ export default function Ribbon({ onAddPlayer, onDraftMatch, onBulkUpload }) {
   const setView = useQueueStore((state) => state.setView);
   const resetSession = useQueueStore((state) => state.resetSession);
 
+  // Added Queueing Group to the module list
   const modules = [
     { id: 'LIVE_QUEUE', label: 'Live Queue', icon: LayoutGrid },
     { id: 'PLAYER_ROSTER', label: 'Players', icon: Users },
     { id: 'HISTORY', label: 'History', icon: History },
+    { id: 'QUEUEING_GROUP', label: 'Groups', icon: Layers }, // New Module
     { id: 'REPORTS', label: 'Reports', icon: BarChart3 },
   ];
 
@@ -80,6 +83,13 @@ export default function Ribbon({ onAddPlayer, onDraftMatch, onBulkUpload }) {
             >
               <Plus size={14} /> Register Member
             </button>
+          )}
+
+          {/* Contextual actions for Group Management will appear here once defined */}
+          {currentView === 'QUEUEING_GROUP' && (
+            <div className="flex items-center px-3 py-1.5 text-slate-400 text-[10px] font-black uppercase italic">
+              Group Management Logic Pending
+            </div>
           )}
         </div>
 
