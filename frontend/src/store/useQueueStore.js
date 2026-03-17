@@ -203,6 +203,49 @@ const useQueueStore = create((set, get) => ({
     }
   },
 
+    assignGameToCourt: async (gameId, courtId) => {
+    try {
+      const res = await fetch(`${API_URL}/games/${gameId}/assign`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courtId })
+      });
+
+      if (res.ok) {
+        // Success! Reload the board to move the game from Pending to the Court
+        get().initSession();
+      } else {
+        const errText = await res.text();
+        alert(`Failed to assign court: ${errText}`);
+      }
+    } catch (error) {
+      console.error("Assign Error:", error);
+      alert("Network error while assigning to court.");
+    }
+  },
+
+  completeGame: async (courtId, gameId, resultData) => {
+    try {
+      const res = await fetch(`${API_URL}/games/${gameId}/complete`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(resultData)
+      });
+
+      if (res.ok) {
+        // Success! Fetch the fresh data to instantly clear the court on the UI
+        get().initSession();
+      } else {
+        // Catch backend rejections
+        const errText = await res.text();
+        alert(`Failed to complete game: ${errText}`);
+      }
+    } catch (error) {
+      console.error("Complete Game Error:", error);
+      alert("Network error while completing the game.");
+    }
+  },
+
 
   resetSession: async () => {
     const { sessionId } = get();
