@@ -3,8 +3,7 @@ import { X, UserPlus } from 'lucide-react';
 import useQueueStore from '../store/useQueueStore';
 
 export default function AddPlayerModal({ isOpen, onClose }) {
-  // FIX: Change 'addPlayer' to 'addMember' to match your store
-  const addMember = useQueueStore((state) => state.addMember);
+  const addPlayer = useQueueStore((state) => state.addPlayer);
 
   // Form State
   const [name, setName] = useState('');
@@ -19,17 +18,17 @@ export default function AddPlayerModal({ isOpen, onClose }) {
     e.preventDefault();
     
     // Construct the new player object
-    const newMember = {
+    const newPlayer = {
       name: name.trim(),
       levelWeight: Number(levelWeight),
       gender,
       status: 'ACTIVE',
       paymentStatus,
+      // Only attach payment mode if they actually paid
       paymentMode: paymentStatus === 'PAID' ? paymentMode : null, 
     };
 
-    // FIX: Call addMember instead of addPlayer
-    addMember(newMember);
+    addPlayer(newPlayer);
     
     // Reset form and close modal
     setName('');
@@ -58,6 +57,7 @@ export default function AddPlayerModal({ isOpen, onClose }) {
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           
+          {/* Name & Gender Row */}
           <div className="flex gap-4">
             <div className="flex-1">
               <label className="block text-sm font-semibold text-gray-700 mb-1">Player Name</label>
@@ -83,6 +83,7 @@ export default function AddPlayerModal({ isOpen, onClose }) {
             </div>
           </div>
 
+          {/* Skill Level */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Skill Level (Palag Weight)</label>
             <select 
@@ -98,6 +99,7 @@ export default function AddPlayerModal({ isOpen, onClose }) {
             </select>
           </div>
 
+          {/* Payment Section */}
           <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
             <label className="block text-sm font-semibold text-gray-700">Entrance Fee Status</label>
             <div className="flex gap-4">
@@ -125,6 +127,7 @@ export default function AddPlayerModal({ isOpen, onClose }) {
               </label>
             </div>
 
+            {/* Conditionally render Payment Mode based on Paid status */}
             <div className={`transition-opacity ${paymentStatus === 'PAID' ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
               <label className="block text-xs text-gray-500 mb-1">Mode of Payment</label>
               <select 
@@ -141,6 +144,7 @@ export default function AddPlayerModal({ isOpen, onClose }) {
             </div>
           </div>
 
+          {/* Action Buttons */}
           <div className="flex justify-end gap-3 mt-6 pt-2">
             <button 
               type="button" 

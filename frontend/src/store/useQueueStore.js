@@ -127,40 +127,6 @@ const useQueueStore = create((set, get) => ({
     }
   },
 
-  // --- MEMBER REGISTRATION ---
-  addMember: async (playerData) => {
-    const { sessionId } = get();
-    
-    if (!sessionId || sessionId === 'OFFLINE') {
-      alert("Error: No active session found.");
-      return;
-    }
-
-    try {
-      // We send the player data + the current sessionId to the backend
-      const res = await fetch(`${API_URL}/players`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...playerData,
-          sessionId
-        })
-      });
-
-      if (res.ok) {
-        // Refresh the session to show the newly added player in the "Available" column
-        get().initSession();
-      } else {
-        const errText = await res.text();
-        alert(`Failed to register member: ${errText}`);
-      }
-    } catch (e) {
-      console.error("Registration Error:", e);
-      alert("Network error while registering member.");
-    }
-  },
-
-
   updateMember: async (memberId, updatedData) => {
     try {
       const res = await fetch(`${API_URL}/players/member/${memberId}`, {

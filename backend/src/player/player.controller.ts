@@ -25,12 +25,6 @@ export class PlayerController {
     return await this.playerService.joinSession(memberId, sessionId);
   }
 
-  // Handles: POST http://...:3000/players
-  @Post()
-  async register(@Body() createDto: any) {
-    return this.playerService.addMember(createDto);
-  }
-
   @Patch('member/:id')
   updateMember(@Param('id') id: string, @Body() updateData: any) {
     return this.playerService.updateMember(id, updateData);
