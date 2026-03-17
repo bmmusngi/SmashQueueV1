@@ -38,6 +38,7 @@ const useQueueStore = create((set, get) => ({
       
       const currentSessionId = session?.id;
 
+      // Fetch Players, Global Roster, AND Games
       const [playersRes, globalRes, gamesRes] = await Promise.all([
         fetch(`${API_URL}/players/session/${currentSessionId}`).catch(() => ({ json: () => [] })),
         fetch(`${API_URL}/players/global`).catch(() => ({ json: () => [] })),
@@ -48,9 +49,11 @@ const useQueueStore = create((set, get) => ({
       const globalPlayers = (await globalRes.json()) || [];
       const allGames = (await gamesRes.json()) || [];
 
+      // Sort games for the UI
       const pendingGames = Array.isArray(allGames) ? allGames.filter(g => g?.status === 'PENDING') : [];
       const activeGames = Array.isArray(allGames) ? allGames.filter(g => g?.status === 'ACTIVE') : [];
 
+      // Assign active games to the correct courts
       const updatedCourts = (get().courts || []).map(court => {
         const gameOnThisCourt = activeGames.find(g => g?.courtId === court?.id);
         return { ...court, activeGame: gameOnThisCourt || null };
@@ -122,7 +125,6 @@ const useQueueStore = create((set, get) => ({
     } catch (e) { console.error(e); }
   },
 
-  // NEW: Toggle Break Status
   toggleSessionPlayerStatus: async (playerId, currentStatus) => {
     const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
     try {
@@ -140,7 +142,6 @@ const useQueueStore = create((set, get) => ({
     } catch (e) { console.error(e); }
   },
 
-  // NEW: Hard Remove from Session
   removeSessionPlayer: async (playerId) => {
     if (!window.confirm("Remove this player from the current session?")) return;
     try {

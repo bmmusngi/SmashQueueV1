@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Param, Patch } from '@nestjs/common';
+// FIX: Added 'Delete' to the import list
+import { Controller, Get, Post, Body, Param, Patch, Delete } from '@nestjs/common';
 import { PlayerService } from './player.service';
 
 @Controller('players')
@@ -15,8 +16,6 @@ export class PlayerController {
     return this.playerService.getPlayersBySession(sessionId);
   }
 
-  // FIXED: Changed cloneToSession to joinSession to match the service logic
-  // and ensured it returns the result of the service call.
   @Post(':id/join-session')
   async joinSession(
     @Param('id') memberId: string, 
@@ -30,15 +29,14 @@ export class PlayerController {
     return this.playerService.updateMember(id, updateData);
   }
   
-   @Patch(':id')
- update(@Param('id') id: string, @Body() updateData: any) {
-   return this.playerService.updatePlayer(id, updateData);
- }
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateData: any) {
+    return this.playerService.updatePlayer(id, updateData);
+  }
  
- // NEW: Hard Delete Route
- @Delete(':id')
- removeSessionPlayer(@Param('id') id: string) {
-   return this.playerService.removeSessionPlayer(id);
- }
-  
+  // NEW: Hard Delete Route
+  @Delete(':id')
+  removeSessionPlayer(@Param('id') id: string) {
+    return this.playerService.removeSessionPlayer(id);
+  }
 }
