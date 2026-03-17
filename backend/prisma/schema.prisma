@@ -15,6 +15,26 @@ model Session {
   games     Game[]
 }
 
+model QueueingGroup {
+  id        String   @id @default(uuid())
+  groupName String
+  createdAt DateTime @default(now())
+  
+  // Many-to-many relationship with Member
+  members   MemberQueueingGroup[]
+}
+
+model MemberQueueingGroup {
+  id            String        @id @default(uuid())
+  memberId      String
+  member        Member        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  queueingGroupId String
+  queueingGroup QueueingGroup @relation(fields: [queueingGroupId], references: [id], onDelete: Cascade)
+  createdAt     DateTime      @default(now())
+  
+  @@unique([memberId, queueingGroupId])
+}
+
 model Member {
   id            String   @id @default(uuid())
   name          String
@@ -28,6 +48,9 @@ model Member {
   
   // A member can appear in many sessions as a 'Player'
   sessionEntries Player[]
+  
+  // Many-to-many relationship with QueueingGroup
+  queueingGroups MemberQueueingGroup[]
 }
 
 model Player {
