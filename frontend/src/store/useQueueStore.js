@@ -19,13 +19,13 @@ const useQueueStore = create((set, get) => ({
 
   setView: (view) => set({ currentView: view }),
 
-  // INITIALIZATION
+    // INITIALIZATION
   initSession: async () => {
-    if (get().socket) return; 
+    // REMOVED the socket trap from here!
 
     try {
-      const sessionRes = await fetch(`${API_URL}/sessions/active`);
-      if (!sessionRes.ok) throw new Error("Backend not responding");
+      const sessionRes = await fetch(`${API_URL}/sessions/active`).catch(() => null);
+      if (!sessionRes || !sessionRes.ok) throw new Error("Backend not responding");
       
       const sessionText = await sessionRes.text();
       let session = sessionText ? JSON.parse(sessionText) : null;
@@ -35,25 +35,49 @@ const useQueueStore = create((set, get) => ({
         session = await createRes.json();
       }
       
-      const currentSessionId = session.id;
+      const currentSessionId = session?.id;
 
-      // Fetch both Global Roster and Session Players immediately
-      const [playersRes, globalRes] = await Promise.all([
-        fetch(`${API_URL}/players/session/${currentSessionId}`),
-        fetch(`${API_URL}/players/global`)
+      // THE FIX: Fetch Players, Global Roster, AND Games simultaneously
+      const [playersRes, globalRes, gamesRes] = await Promise.all([
+        fetch(`${API_URL}/players/session/${currentSessionId}`).catch(() => ({ json: () => [] })),
+        fetch(`${API_URL}/players/global`).catch(() => ({ json: () => [] })),
+        fetch(`${API_URL}/games/session/${currentSessionId}`).catch(() => ({ json: () => [] })) // <-- ADDED THIS
       ]);
 
-      set({ 
-        sessionId: currentSessionId, 
-        players: (await playersRes.json()) || [],
-        globalPlayers: (await globalRes.json()) || []
+      const players = (await playersRes.json()) || [];
+      const globalPlayers = (await globalRes.json()) || [];
+      const allGames = (await gamesRes.json()) || []; // <-- PARSED GAMES
+
+      // Sort games for the UI
+      const pendingGames = Array.isArray(allGames) ? allGames.filter(g => g?.status === 'PENDING') : [];
+      const activeGames = Array.isArray(allGames) ? allGames.filter(g => g?.status === 'ACTIVE') : [];
+
+      // Assign active games to the correct courts
+      const updatedCourts = (get().courts || []).map(court => {
+        const gameOnThisCourt = activeGames.find(g => g?.courtId === court?.id);
+        return { ...court, activeGame: gameOnThisCourt || null };
       });
 
-      // Socket setup
-      const socket = io(API_URL);
-      socket.on('connect', () => set({ isConnected: true, socket }));
-      
-      socket.on('boardStateUpdated', () => get().initSession());
+      // Inject EVERYTHING into the frontend state
+      set({ 
+        sessionId: currentSessionId, 
+        players, 
+        globalPlayers,
+        pendingGames, // <-- NOW IT POPULATES
+        courts: updatedCourts
+      });
+
+      // ONLY setup the socket connection if we haven't already
+      if (!get().socket) {
+        const socket = io(API_URL);
+        socket.on('connect', () => {
+          set({ isConnected: true, socket });
+          socket.emit('joinSession', { sessionId: currentSessionId });
+        });
+        
+        // Listen for updates from other devices
+        socket.on('boardStateUpdated', () => get().initSession());
+      }
 
     } catch (error) { 
       console.error("Init error:", error);
