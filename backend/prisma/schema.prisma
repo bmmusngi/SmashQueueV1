@@ -24,6 +24,7 @@ model Member {
   losses        Int      @default(0)
   ties          Int      @default(0)
   createdAt     DateTime @default(now())
+  isActive      Boolean  @default(true)
   
   // A member can appear in many sessions as a 'Player'
   sessionEntries Player[]
