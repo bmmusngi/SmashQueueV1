@@ -29,4 +29,16 @@ export class PlayerController {
   updateMember(@Param('id') id: string, @Body() updateData: any) {
     return this.playerService.updateMember(id, updateData);
   }
+  
+   @Patch(':id')
+ update(@Param('id') id: string, @Body() updateData: any) {
+   return this.playerService.updatePlayer(id, updateData);
+ }
+ 
+ // NEW: Hard Delete Route
+ @Delete(':id')
+ removeSessionPlayer(@Param('id') id: string) {
+   return this.playerService.removeSessionPlayer(id);
+ }
+  
 }

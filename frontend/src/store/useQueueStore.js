@@ -100,6 +100,55 @@ const useQueueStore = create((set, get) => ({
       alert("Connection error while adding player.");
     }
   },
+  
+    // SOFT DELETE: Toggle player status in the live session
+  toggleSessionPlayerStatus: async (playerId, currentStatus) => {
+    const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    
+    try {
+      const res = await fetch(`${API_URL}/players/${playerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (res.ok) {
+        const updatedPlayer = await res.json();
+        // Update local state to reflect the new status
+        set((state) => ({
+          players: state.players.map(p => p.id === playerId ? { ...p, ...updatedPlayer } : p)
+        }));
+      }
+    } catch (e) {
+      console.error("Status Toggle Error:", e);
+      alert("Failed to update player status.");
+    }
+  },
+
+  // HARD DELETE: Remove a mistakenly added player
+  removeSessionPlayer: async (playerId) => {
+    if (!window.confirm("Remove this player from the current session?")) return;
+
+    try {
+      const res = await fetch(`${API_URL}/players/${playerId}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        // Remove them from the local session list
+        set((state) => ({
+          players: state.players.filter(p => p.id !== playerId)
+        }));
+      } else {
+        const err = await res.text();
+        // This will display the "Cannot remove a player who has already..." message
+        alert(JSON.parse(err).message || "Failed to remove player."); 
+      }
+    } catch (e) {
+      console.error("Delete Error:", e);
+    }
+  },
+
 
   updateMember: async (memberId, updatedData) => {
     try {
