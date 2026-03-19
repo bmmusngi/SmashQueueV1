@@ -7,7 +7,7 @@ const useQueueStore = create((set, get) => ({
   sessionId: null,
   socket: null,
   isConnected: false,
-  currentView: 'LIVE_QUEUE',
+  currentView: 'LIVE_QUEUE', // Can be: LIVE_QUEUE, PLAYER_MANAGEMENT, SESSION_HISTORY, ATTENDANCE_REPORT, GAME_HISTORY_REPORT
   players: [],        // Session-specific players
   globalPlayers: [],  // Global roster
   pendingGames: [],
