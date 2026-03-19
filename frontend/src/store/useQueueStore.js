@@ -7,14 +7,17 @@ const useQueueStore = create((set, get) => ({
   sessionId: null,
   socket: null,
   isConnected: false,
-  currentView: 'LIVE_QUEUE',
+  currentView: 'LIVE_QUEUE', // Can be: LIVE_QUEUE, PLAYER_MANAGEMENT, SESSION_HISTORY, ATTENDANCE_REPORT, GAME_HISTORY_REPORT
   players: [],        // Session-specific players
   globalPlayers: [],  // Global roster
   pendingGames: [],
+  completedGames: [],
   
   courts: [
     { id: 'c1', number: 1, name: 'Court 1', activeGame: null },
-    { id: 'c2', number: 2, name: 'Court 2', activeGame: null }
+    { id: 'c2', number: 2, name: 'Court 2', activeGame: null },
+    { id: 'c3', number: 3, name: 'Court 3', activeGame: null }, 
+    { id: 'c4', number: 4, name: 'Court 4', activeGame: null },
   ],
 
   setView: (view) => set({ currentView: view }),
@@ -51,6 +54,7 @@ const useQueueStore = create((set, get) => ({
       // Sort games for the UI
       const pendingGames = Array.isArray(allGames) ? allGames.filter(g => g?.status === 'PENDING') : [];
       const activeGames = Array.isArray(allGames) ? allGames.filter(g => g?.status === 'ACTIVE') : [];
+      const completedGames = Array.isArray(allGames) ? allGames.filter(g => g.status === 'COMPLETED') : [];
 
       // Assign active games to the correct courts
       const updatedCourts = (get().courts || []).map(court => {
@@ -64,6 +68,7 @@ const useQueueStore = create((set, get) => ({
         players, 
         globalPlayers,
         pendingGames, // <-- NOW IT POPULATES
+        completedGames,
         courts: updatedCourts
       });
 
@@ -136,9 +141,68 @@ const useQueueStore = create((set, get) => ({
         get().fetchGlobalPlayers();
         return true;
       }
-    } catch (e) { return false; }
+    } catch (e) { console.error("Update member error:", e); return false; }
   },
   
+  // --- BULK OPERATIONS ---
+  
+  bulkUpload: async (players, target) => {
+    const { sessionId } = get();
+    if (!players || players.length === 0) return false;
+
+    // Determine endpoint based on target (Global Roster vs Current Session)
+    const endpoint = target === 'GLOBAL' 
+      ? `${API_URL}/players/global/bulk` 
+      : `${API_URL}/players/session/${sessionId}/bulk`;
+
+    try {
+      const res = await fetch(endpoint, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ players }) 
+      });
+
+      if (res.ok) {
+        // Refresh the relevant list
+        if (target === 'GLOBAL') {
+          await get().fetchGlobalPlayers();
+        } else {
+          await get().initSession();
+        }
+        return true;
+      } else {
+        const errText = await res.text();
+        alert(`Bulk upload failed: ${errText}`);
+        return false;
+      }
+    } catch (e) {
+      console.error("Bulk Upload Error:", e);
+      alert("Network error during bulk upload.");
+      return false;
+    }
+  },
+
+  // Remove a player from the current session (e.g. leaving early)
+  removePlayer: async (playerId) => {
+    const { sessionId } = get();
+    if (!sessionId) return;
+
+    try {
+      const res = await fetch(`${API_URL}/players/session/${sessionId}/${playerId}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        get().initSession();
+      } else {
+        const errText = await res.text();
+        alert(`Failed to remove player: ${errText}`);
+      }
+    } catch (e) {
+      console.error("Remove Player Error:", e);
+    }
+  },
+
     // --- MATCHMAKING LOGIC ---
   
   draftGame: async (matchData) => {
@@ -178,6 +242,23 @@ const useQueueStore = create((set, get) => ({
     }
   },
 
+  // Cancel a pending game (delete it before it starts)
+  cancelMatch: async (gameId) => {
+    try {
+      const res = await fetch(`${API_URL}/games/${gameId}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        get().initSession();
+      } else {
+        alert("Failed to cancel match.");
+      }
+    } catch (error) {
+      console.error("Cancel Match Error:", error);
+    }
+  },
+
   updateGame: async (gameId, matchData) => {
     const dbPayload = {
       type: matchData.type,
@@ -203,7 +284,7 @@ const useQueueStore = create((set, get) => ({
     }
   },
 
-    assignGameToCourt: async (gameId, courtId) => {
+  assignGameToCourt: async (gameId, courtId) => {
     try {
       const res = await fetch(`${API_URL}/games/${gameId}/assign`, {
         method: 'PATCH',
@@ -225,6 +306,7 @@ const useQueueStore = create((set, get) => ({
   },
 
   completeGame: async (courtId, gameId, resultData) => {
+    console.log(`Completing game ${gameId} on court ${courtId}`);
     try {
       const res = await fetch(`${API_URL}/games/${gameId}/complete`, {
         method: 'PATCH',
