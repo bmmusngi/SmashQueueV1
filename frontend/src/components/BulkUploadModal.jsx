@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { X, Upload, Info } from 'lucide-react';
 import useQueueStore from '../store/useQueueStore';
 

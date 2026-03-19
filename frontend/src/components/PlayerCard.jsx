@@ -1,4 +1,3 @@
-import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, AlertCircle, CheckCircle2, Timer } from 'lucide-react';
