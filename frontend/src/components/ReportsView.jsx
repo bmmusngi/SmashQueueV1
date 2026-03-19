@@ -1,7 +1,7 @@
 import React from 'react';
 import useQueueStore from '../store/useQueueStore';
-import AttendanceReport from './reports/AttendanceReport';
-import GameHistoryReport from './reports/GameHistoryReport';
+import AttendanceReport from './AttendanceReport';
+import GameHistoryReport from './GameHistoryReport';
 
 export default function ReportsView() {
   const currentView = useQueueStore(state => state.currentView);
