@@ -68,6 +68,7 @@ model Player {
   status        String   @default("ACTIVE")
   paymentStatus String   @default("UNPAID")
   paymentMode   String?  // GCash, Cash, QRPH
+  paymentMethod String?  // GCash, Cash, QRPH, deprecate one or the other as needed once bug is fixed
   
   createdAt     DateTime @default(now())
 

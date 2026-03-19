@@ -43,17 +43,16 @@ This document serves as a comprehensive guide to all the frontend TypeScript/JSX
 - **useState**: Used to manage local state in functional components.
 
 ## State Management
-The application utilizes the Context API for global state management, allowing passing data through the component tree without manually passing props.
+The application utilizes **Zustand** for global state management. It provides a centralized store (`useQueueStore`) to manage session data, player lists, game state, and API interactions in a clean and efficient manner.
 
-### Example of Context Usage
+### Example of Zustand Store (`useQueueStore.js`)
 ```jsx
-const MyContext = React.createContext();
+import { create } from 'zustand';
 
-const MyProvider = ({ children }) => {
-  const [state, setState] = useState(initialState);
-
-  return <MyContext.Provider value={{ state, setState }}>{children}</MyContext.Provider>;
-};
+const useQueueStore = create((set) => ({
+  players: [],
+  addPlayer: (player) => set((state) => ({ players: [...state.players, player] })),
+}));
 ```
 
 ---
