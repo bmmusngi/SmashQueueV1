@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { io } from 'socket.io-client';
 
-const API_URL = "http://100.88.175.25:8080";
+const API_URL = "http://100.88.175.25:3000";
 
 const useQueueStore = create((set, get) => ({
   sessionId: null,
@@ -11,6 +11,7 @@ const useQueueStore = create((set, get) => ({
   players: [],        // Session-specific players
   globalPlayers: [],  // Global roster
   pendingGames: [],
+  completedGames: [],
   
   courts: [
     { id: 'c1', number: 1, name: 'Court 1', activeGame: null },
@@ -53,6 +54,7 @@ const useQueueStore = create((set, get) => ({
       // Sort games for the UI
       const pendingGames = Array.isArray(allGames) ? allGames.filter(g => g?.status === 'PENDING') : [];
       const activeGames = Array.isArray(allGames) ? allGames.filter(g => g?.status === 'ACTIVE') : [];
+      const completedGames = Array.isArray(allGames) ? allGames.filter(g => g.status === 'COMPLETED') : [];
 
       // Assign active games to the correct courts
       const updatedCourts = (get().courts || []).map(court => {
@@ -66,6 +68,7 @@ const useQueueStore = create((set, get) => ({
         players, 
         globalPlayers,
         pendingGames, // <-- NOW IT POPULATES
+        completedGames,
         courts: updatedCourts
       });
 

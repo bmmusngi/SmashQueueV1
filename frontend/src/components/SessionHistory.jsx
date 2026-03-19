@@ -3,25 +3,9 @@ import { History, Trophy, Shovel, Clock } from 'lucide-react';
 import useQueueStore from '../store/useQueueStore';
 
 export default function SessionHistory() {
-  const { pendingGames, courts, players } = useQueueStore();
-  
-  // Note: We need to fetch completed games. For now, let's assume 
-  // we'll add a 'completedGames' state to the store or fetch them here.
-  // For this UI build, let's look at the logic.
-  
-  const [completedGames, setCompletedGames] = React.useState([]);
-  const API_URL = 'http://100.88.175.25:3000'; 
-  const sessionId = useQueueStore(s => s.sessionId);
-
-  React.useEffect(() => {
-    if (sessionId) {
-      fetch(`${API_URL}/games/session/${sessionId}`)
-        .then(res => res.json())
-        .then(data => {
-          setCompletedGames(data.filter(g => g.status === 'COMPLETED'));
-        });
-    }
-  }, [sessionId]);
+  // Read completed games directly from the Zustand store.
+  // This avoids redundant API calls and removes hardcoded URLs from components.
+  const completedGames = useQueueStore(state => state.completedGames);
 
   const formatDate = (dateStr) => {
     return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
