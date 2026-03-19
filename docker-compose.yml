@@ -33,9 +33,6 @@ services:
     build: ./frontend
     container_name: bqm_frontend
     restart: always
-    args:
-        # This passes the variable from your .env file to the Dockerfile
-        - VITE_API_URL=${VITE_API_URL}
     ports:
       - "8080:80" # Maps NAS port 8080 to Nginx port 80
     depends_on:
