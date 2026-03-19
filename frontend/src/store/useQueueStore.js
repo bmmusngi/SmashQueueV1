@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { io } from 'socket.io-client';
 
-const API_URL = 'http://100.88.175.25:3000'; 
+const API_URL = import.meta.env?.VITE_API_URL || 'http://localhost:3000';
 
 const useQueueStore = create((set, get) => ({
   sessionId: null,
@@ -141,6 +141,19 @@ const useQueueStore = create((set, get) => ({
     } catch (e) { return false; }
   },
   
+  // --- BULK OPERATIONS ---
+  
+  bulkUpload: async (players, target) => {
+    // Stub implementation to prevent UI crash. 
+    // Needs backend endpoint implementation (e.g. POST /players/bulk)
+    console.log(`[Mock] Uploading ${players.length} players to ${target}`);
+    // Example implementation:
+    // const endpoint = target === 'GLOBAL' ? '/players/global/bulk' : `/players/session/${get().sessionId}/bulk`;
+    // const res = await fetch(`${API_URL}${endpoint}`, { method: 'POST', body: JSON.stringify(players) ... });
+    // if (res.ok) get().initSession();
+    return true; 
+  },
+
     // --- MATCHMAKING LOGIC ---
   
   draftGame: async (matchData) => {
