@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { History, Trophy, Shovel } from 'lucide-react';
-
-const API_URL = "http://100.88.175.25:3000"; // This should be from an env var
+import { API_URL } from '../config';
 
 export default function GameHistoryReport() {
   const [reportData, setReportData] = useState([]);

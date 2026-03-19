@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Calendar } from 'lucide-react';
-
-const API_URL = "http://100.88.175.25:3000"; // This should be from an env var
+import { API_URL } from '../config';
 
 export default function AttendanceReport() {
   const [reportData, setReportData] = useState([]);

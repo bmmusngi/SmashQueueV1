@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { io } from 'socket.io-client';
-
-const API_URL = "http://100.88.175.25:3000";
+import { API_URL } from '../config';
 
 const useQueueStore = create((set, get) => ({
   sessionId: null,
