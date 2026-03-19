@@ -140,7 +140,7 @@ const useQueueStore = create((set, get) => ({
         get().fetchGlobalPlayers();
         return true;
       }
-    } catch (e) { return false; }
+    } catch (e) { console.error("Update member error:", e); return false; }
   },
   
   // --- BULK OPERATIONS ---
@@ -242,6 +242,7 @@ const useQueueStore = create((set, get) => ({
   },
 
   completeGame: async (courtId, gameId, resultData) => {
+    console.log(`Completing game ${gameId} on court ${courtId}`);
     try {
       const res = await fetch(`${API_URL}/games/${gameId}/complete`, {
         method: 'PATCH',
